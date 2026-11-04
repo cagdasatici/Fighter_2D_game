@@ -102,7 +102,9 @@ function detect(s: MatchState, i: number): Pending | null {
     if (a.moveFrame < h.frames[0] || a.moveFrame > h.frames[1] || !strikeReady(a, m, k)) continue;
     if (d.state === "knockdown" || d.state === "getup" || d.state === "ko") return null;
     if (moveInvuln(d, ["full", "strike"])) return null;
-    if (d.state === "juggle" && h.launch === null) return null; // juggle limit
+    // Juggle limit (spec §8.3): only launch hits connect on a juggled fighter, except later
+    // hits of the same move instance that already connected (decision 0004).
+    if (d.state === "juggle" && h.launch === null && a.moveHitMask === 0) return null;
     const hbs = strikeBoxes(a, m, h);
     if (!hurtboxes(d).some((hu) => hbs.some((hb) => overlaps(hb, hu)))) return null;
     const dm = d.state === "attack" ? curMove(d) : null;
@@ -135,7 +137,8 @@ export function addLockHit(a: Fighter, d: Fighter, base: number): void {
 
 export function toJuggle(f: Fighter, vx: number, vy: number): void {
   f.state = "juggle"; f.stateFrame = 1; f.move = null; f.moveFrame = 0; f.cancelOk = false; f.counterArmed = false;
-  f.airborne = true; f.vx = vx + 0; f.vy = vy; // + 0: no -0 in state (spec §16 c) f.stun = 0; f.pushRemain = 0; f.pushPerFrame = 0; f.lockLeft = 0;
+  f.airborne = true; f.vx = vx + 0; f.vy = vy; // + 0: no -0 in state (spec §16 c)
+  f.stun = 0; f.pushRemain = 0; f.pushPerFrame = 0; f.lockLeft = 0;
 }
 
 function apply(s: MatchState, i: 0 | 1, p: Pending): void {

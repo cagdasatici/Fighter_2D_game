@@ -61,15 +61,13 @@ describe("rising specials: listed totals measured vs an airborne target (decisio
     ["bolt", LP, 110], ["bolt", HP, 140],    // jackhammerRise
     ["kaze", LK, 100], ["kaze", HK, 130],    // risingCrane
   ];
-  // BLOCKED (docs/tasks.md S7): liveWireHop 4 × 30 = 120 is not reachable vs an airborne target: hit 1 juggles the
-  // target and spec §8.3 lets only `launch` hits connect on a juggled fighter, so hits 2-3 (no launch) cannot connect.
-  // Measured: 30. Enable once the owner decides.
-  it.skip("volt liveWireHop deals 120 to an airborne opponent (BLOCKED)", () => {
+  // Decision 0004: same-move hits continue a juggle. Volt out-rises the target, so the 4th hit passes over it: 30+30+24 = 84.
+  it("volt liveWireHop hits an airborne opponent 3 times for 84 scaled (decision 0004)", () => {
     for (const btn of [LK, HK]) {
       const s = at(40, "volt", "volt");
       air(s);
       runFrames(s, [...dp(btn), ...hold(0, 0, 40)]);
-      expect(CHARS.volt.hp - s.fighters[1].hp).toBe(120);
+      expect(CHARS.volt.hp - s.fighters[1].hp).toBe(84);
     }
   });
   for (const [c, btn, total] of cases) {
