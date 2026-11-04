@@ -13,7 +13,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S2 | Motion parser | S1 | DONE | a9bdd68 | docs/test-results/S2.md |
 | S3 | Char data model + base normals + 5 char data files | S1 | DONE (provisional values, see S3 notes) | 371f477 | docs/test-results/S3.md |
 | S4 | Sim core: state, movement, jumps, dashes, pushboxes | S2, S3 | DONE | 76b3f62 | docs/test-results/S4.md |
-| S5 | Attacks, hit/block resolution, combos, throws | S4 | TODO | | |
+| S5 | Attacks, hit/block resolution, combos, throws | S4 | BLOCKED (code complete; 1 question) | 8496beb | docs/test-results/S5.md |
 | S6 | Projectiles, specials, special rules per char | S5 | TODO | | |
 | S7 | Supers, meter, round/match flow, balance guardrails, determinism suite | S6 | TODO | | |
 | S8 | Client shell: canvas, game loop, keyboard, local 2P with debug boxes | S7 | TODO | | |
@@ -80,6 +80,8 @@ S12 can run in parallel with S8–S11 (different files).
 **Steps:** spec §8.1 attack start/advance/cancel, §8.3 entire (counter hit, combo scaling, juggle rules, trades, hurtExtend, throws + tech, command grabs).
 **Tests (each named after a rule):** LP hits standing dummy at 50 px, whiffs at 120 px; damage exact; hitstun length; blockstun length; frame advantage LP on block = +2 (Bolt); low must be crouch-blocked (stand-block fails); overhead must be stand-blocked; airborne can't block; chip can't KO; counter hit ×1.2 +2 stun; combo scaling sequence 100/100/80/70; cancel LP→special only on hit/block not whiff; chain LP→LP; trade both damaged; hitstop both 8 / 11; pushback transfer at wall; throw connects at 70 px not 71; tech within 7 frames; throw whiff recovery; juggle invulnerability except launch moves; knockdown → getup invuln.
 **Commit:** `S5: add attack resolution, blocking, combos and throws`
+**BLOCKED:** "frame advantage LP on block = +2 (Bolt)": Bolt 5LP is startup 4 / active 2 / recovery 7, blockstun 9. Hit on move frame 5 leaves 1 active + 7 recovery = 8 frames vs blockstun 9 → +1 (measured). +2 only results from blockstun − recovery (ignoring the remaining active frame). Which is intended: change the test to +1, or change data (e.g. blockstun 10)? Test currently asserts +1.
+**Notes (S5 session):** Bolt `6HP` (Hat Butt) box starts at y 70 = crouch hurtbox top, so it whiffs crouchers under strict AABB; fix in data (S3 owner) if overheads should hit crouchers. Other interpretations: docs/test-results/S5.md.
 
 ## S6 — Projectiles and specials
 **Files:** `sim/projectile.ts`, special-case handlers in `sim/specials.ts` (teleport `smokeStep`, `counter` stance, `gulpGrab` sequence, `stampedeRoll` wall rebound, `overload` multi-spawn, `heal`, `lockOnHit`), `tests/unit/sim-projectile.test.ts`, `sim-specials-<char>.test.ts` (5 files).

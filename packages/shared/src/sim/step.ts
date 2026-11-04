@@ -1,7 +1,9 @@
-import { cleanSocd, type InputByte } from "../input/buttons.js";
-import { pushInput } from "../input/history.js";
+import { HK, HP, LK, LP, cleanSocd, type InputByte } from "../input/buttons.js";
+import { pressed, pushInput } from "../input/history.js";
+import { updateCharge } from "../input/motion.js";
 import { ROUND_INTRO_FRAMES } from "./constants.js";
-import { stateMachine, updateFacing } from "./fighter.js";
+import { BUTTON_BUFFER, afterPhysics, stateMachine, updateFacing } from "./fighter.js";
+import { hits, pushback } from "./hit.js";
 import { physics, pushboxes } from "./physics.js";
 import type { MatchState } from "./types.js";
 
@@ -12,6 +14,13 @@ export function step(s: MatchState, inputs: [InputByte, InputByte]): void {
   const [a, b] = s.fighters;
   pushInput(a, cleanSocd(inputs[0]));
   pushInput(b, cleanSocd(inputs[1]));
+  for (const f of s.fighters) {
+    // Special button buffer (spec §5.3): a press arms it; it only drains while the fighter is not
+    // frozen (hitstop/superFreeze), so a cancel input made during hitstop survives it.
+    if (pressed(f, LP) || pressed(f, HP) || pressed(f, LK) || pressed(f, HK)) f.buffered = BUTTON_BUFFER;
+    else if (f.buffered > 0 && f.hitstop === 0 && s.superFreeze === 0) f.buffered--;
+    updateCharge(f, f.facing);
+  }
   if (s.superFreeze > 0) { s.superFreeze--; return; }
   const live = s.phase === "fight";
   const prevX: [number, number] = [a.x, b.x];
@@ -21,7 +30,9 @@ export function step(s: MatchState, inputs: [InputByte, InputByte]): void {
     if (f.hitstop > 0) { f.hitstop--; continue; }
     updateFacing(f, opp);
     stateMachine(f, opp, live ? cleanSocd(inputs[i]!) : 0);
+    const wasAir = f.airborne;
     physics(f);
+    afterPhysics(f, wasAir);
   }
   pushboxes(s, prevX, [wasAir[0] && !a.airborne, wasAir[1] && !b.airborne]);
   projectiles(s);
@@ -30,10 +41,8 @@ export function step(s: MatchState, inputs: [InputByte, InputByte]): void {
   round(s);
 }
 
-// TODO(S5): hit detection, pushback. TODO(S6): projectiles. TODO(S7): timer, KO, round flow.
+// TODO(S6): projectiles. TODO(S7): timer, KO, round flow.
 function projectiles(_s: MatchState): void { /* S6 */ }
-function hits(_s: MatchState): void { /* S5 */ }
-function pushback(_s: MatchState): void { /* S5 */ }
 function round(s: MatchState): void {
   if (s.phase === "intro") {
     s.phaseFrame++;
