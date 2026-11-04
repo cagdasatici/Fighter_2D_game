@@ -1,7 +1,10 @@
+import { randomBytes } from "node:crypto";
+import { createMatch, cloneState, step, checksum, type MatchState } from "@kb/shared";
+import { FixedClock } from "../sim/FixedClock.js";
 import { Room, type Client } from "colyseus";
 import {
   CONTENT_HASH, FIGHT_ROOM_NAME, JoinOptionsSchema, MAX_CLIENTS, MSG, PROTOCOL_VERSION, parseClientMsg,
-  type LobbyMsg, type LobbySlot,
+  type LobbyMsg, type LobbySlot, type CharId, type ServerMsg, ServerMsgSchema,
 } from "@kb/shared/net/protocol";
 import type { AuthServices } from "../auth/Services.js";
 import { originOk } from "../http/securityHeaders.js";
@@ -25,26 +28,35 @@ interface Seat {
   inBucket: TokenBucket;
   otherBucket: TokenBucket;
   invalid: InvalidMessageGuard;
+  char: CharId | null; ready: boolean; connected: boolean; rematch: boolean; snapAt: number;
 }
 
-/**
- * S12a placeholder: two seats, join/leave and the `lobby` broadcast only.
- * TODO(S12b): pick/ready/start, input confirmation, FixedClock tick, hashes, snapshots, reconnection and forfeit (spec §11.3).
- */
 export class FightRoom extends Room {
   override maxClients: number = MAX_CLIENTS;
   roomCode = "";
   private seats = new Map<string, Seat>();
   private seatByAuth = new Map<string, string>();
 
+  private match: MatchState | null = null;
+  private startAt = 0;
+  private seed = 1;
+  private ended = false;
+  private pendingInputs = new Map<number, [number | null, number | null]>();
+  private previous: [number, number] = [0, 0];
+  private hashes = new Map<number, number>();
+  private fixed = new FixedClock();
+  private handlers: (() => void)[] = [];
+  private reservations = new Map<string, { reject: () => void }>();
+
   override onCreate(options: { roomCode?: string }): void {
     this.roomCode = typeof options?.roomCode === "string" ? options.roomCode : "";
     if (this.roomCode === "") throw new Error("ROOM_CODE_REQUIRED");
     roomDirectory.register(this.roomCode, this.roomId);
     liveRooms.add(this);
-    this.onMessage(MSG, (client, raw) => this.onClientMessage(client, raw));
+    this.setSimulationInterval((dt) => this.fixed.advance(dt, () => this.confirmInputs()), 1);
+    this.handlers.push(this.onMessage(MSG, (client, raw) => this.onClientMessage(client, raw)));
     // No arbitrary client events: everything else is dropped and counted.
-    this.onMessage("*", (client) => { this.noteInvalid(client, "unknown_type"); });
+    this.handlers.push(this.onMessage("*", (client) => { this.noteInvalid(client, "unknown_type"); }));
   }
 
   override async onAuth(_client: Client, options: unknown, context?: { headers?: Headers }): Promise<{ authId: string; displayName: string }> {
@@ -75,48 +87,94 @@ export class FightRoom extends Room {
       authId: auth.authId, name: auth.displayName, slot,
       // Spec §11.2: `in` ≤ 90/s with bursts of 20; other kinds ≤ 5/s.
       inBucket: new TokenBucket(90, 20, now), otherBucket: new TokenBucket(5, 5, now), invalid: new InvalidMessageGuard(),
+      char: null, ready: false, connected: true, rematch: false, snapAt: -Infinity,
     });
     this.seatByAuth.set(auth.authId, client.sessionId);
     log("info", "player joined", { room: this.roomId, slot });
     this.broadcastLobby();
   }
 
+  override async onDrop(client: Client): Promise<void> {
+    const seat = this.seats.get(client.sessionId);
+    if (!seat) return;
+    seat.connected = false;
+    this.previous[seat.slot] = 0;
+    for (const pair of this.pendingInputs.values()) pair[seat.slot] = null;
+    if (!authServices?.sessions.getById(seat.authId)) return;
+    const reservation = this.allowReconnection(client, 20);
+    this.reservations.set(client.sessionId, { reject: () => reservation.reject() });
+    try { await reservation; } catch { /* Colyseus invokes onLeave after expiry. */ }
+    finally { this.reservations.delete(client.sessionId); }
+  }
+
+  override onReconnect(client: Client): void {
+    const seat = this.seats.get(client.sessionId);
+    if (!seat) return;
+    if (!authServices?.sessions.getById(seat.authId)) { client.leave(AUTH_REVOKED_CLOSE); return; }
+    seat.connected = true;
+    this.sendStart(client, seat);
+    this.sendSnap(client, seat, true);
+    if (this.ended && this.match) this.sendGame(client, { t: "end", winner: this.match.winner });
+    this.broadcastLobby();
+  }
+
   override onLeave(client: Client): void {
     const seat = this.seats.get(client.sessionId);
     if (!seat) return;
+    if (this.match && !this.ended) {
+      this.match.phase = "matchEnd";
+      this.match.winner = seat.slot === 0 ? 1 : 0;
+      this.ended = true;
+      this.emit({ t: "end", winner: this.match.winner });
+    }
     this.seatByAuth.delete(seat.authId);
     this.seats.delete(client.sessionId);
+    if (this.seats.size === 0) {
+      this.match = null;
+      this.ended = false;
+      this.pendingInputs.clear();
+      this.hashes.clear();
+      this.previous = [0, 0];
+    }
     log("info", "player left", { room: this.roomId, slot: seat.slot });
     this.broadcastLobby();
   }
 
   override onDispose(): void {
+    this.setSimulationInterval();
+    for (const off of this.handlers) off();
+    this.handlers = [];
+    for (const reservation of this.reservations.values()) reservation.reject();
+    this.reservations.clear();
+    this.pendingInputs.clear();
+    this.hashes.clear();
     liveRooms.delete(this);
     roomDirectory.unregister(this.roomId);
     this.seats.clear();
     this.seatByAuth.clear();
   }
 
-  /** Auth ids of seated players (all connected: reconnection holds arrive in S12b). */
+  /** Auth ids and connection state, including reserved seats. */
   seatedSessions(): { authId: string; connected: boolean }[] {
-    return [...this.seats.values()].map((s) => ({ authId: s.authId, connected: true }));
+    return [...this.seats.values()].map((s) => ({ authId: s.authId, connected: s.connected }));
   }
 
   /** Ends the seat bound to an auth session with close code 4401. Other seats are untouched. */
   revokeAuthSession(authId: string): void {
     const sid = this.seatByAuth.get(authId);
     if (sid === undefined) return;
+    this.reservations.get(sid)?.reject();
     this.clients.find((c) => c.sessionId === sid)?.leave(AUTH_REVOKED_CLOSE);
   }
 
   lobby(): LobbyMsg {
     const slots: LobbySlot[] = [...this.seats.values()]
       .sort((a, b) => a.slot - b.slot)
-      .map((s) => ({ name: s.name, char: null, ready: false, bot: false }));
+      .map((s) => ({ name: s.name, char: s.char, ready: s.ready, bot: false }));
     return { t: "lobby", slots };
   }
 
-  private broadcastLobby(): void { this.broadcast(MSG, this.lobby()); }
+  private broadcastLobby(): void { this.emit(this.lobby()); }
 
   private onClientMessage(client: Client, raw: unknown): void {
     const seat = this.seats.get(client.sessionId);
@@ -126,7 +184,93 @@ export class FightRoom extends Room {
     const now = Date.now();
     const bucket = msg.t === "in" ? seat.inBucket : seat.otherBucket;
     if (!bucket.take(now)) { this.noteInvalid(client, "rate"); return; }
-    // TODO(S12b): handle pick/ready/in/ack/resync/rematch. The placeholder accepts and ignores valid messages.
+    switch (msg.t) {
+      case "pick":
+        if (!this.match) { seat.char = msg.char; seat.ready = false; this.broadcastLobby(); }
+        break;
+      case "ready":
+        if (!this.match && seat.char) { seat.ready = true; this.broadcastLobby(); this.maybeStart(); }
+        break;
+      case "in":
+        if (this.match && !this.ended && seat.connected && msg.f > this.match.frame && msg.f <= this.match.frame + 600) {
+          const pair = this.pendingInputs.get(msg.f) ?? [null, null];
+          if (pair[seat.slot] === null) pair[seat.slot] = msg.b;
+          this.pendingInputs.set(msg.f, pair);
+        }
+        break;
+      case "ack":
+        if (this.hashes.has(msg.f) && this.hashes.get(msg.f) !== msg.h) this.sendSnap(client, seat);
+        break;
+      case "resync": this.sendSnap(client, seat); break;
+      case "rematch":
+        if (this.ended) {
+          seat.rematch = true;
+          if (this.seats.size === 2 && [...this.seats.values()].every((s) => s.rematch && s.connected)) this.startMatch();
+        }
+        break;
+    }
+  }
+
+  private sendGame(client: Client, msg: ServerMsg): void { client.send(MSG, ServerMsgSchema.parse(msg)); }
+  private emit(msg: ServerMsg): void { this.broadcast(MSG, ServerMsgSchema.parse(msg)); }
+
+  private maybeStart(): void {
+    if (this.seats.size === 2 && [...this.seats.values()].every((s) => s.char && s.ready && s.connected)) this.startMatch();
+  }
+
+  private startMatch(): void {
+    const ordered = [...this.seats.values()].sort((a, b) => a.slot - b.slot);
+    const chars: [CharId, CharId] = [ordered[0]!.char!, ordered[1]!.char!];
+    let seed = 0;
+    while (seed === 0) seed = randomBytes(4).readUInt32LE();
+    const stage = chars[0] === "chompa" ? "volcano" : chars[0] === "kaze" || chars[0] === "bao" ? "bamboo" : "rooftop";
+    this.seed = seed;
+    this.match = createMatch({ chars, stage, seed });
+    this.startAt = Date.now() + 1500;
+    this.ended = false;
+    this.pendingInputs.clear(); this.hashes.clear(); this.previous = [0, 0];
+    for (const s of ordered) { s.rematch = false; s.snapAt = -Infinity; }
+    for (const client of this.clients) this.sendStart(client, this.seats.get(client.sessionId)!);
+  }
+
+  private sendStart(client: Client, seat: Seat): void {
+    if (!this.match) return;
+    // The seed is retained separately because MatchState.rng may advance during play.
+    this.sendGame(client, { t: "start", seed: this.seed, chars: [this.match.fighters[0].char, this.match.fighters[1].char],
+      stage: this.match.stage, you: seat.slot, startAtMs: this.startAt, delay: 2 });
+  }
+
+  private sendSnap(client: Client, seat: Seat, reconnect = false): void {
+    const now = Date.now();
+    if (!this.match || (!reconnect && now - seat.snapAt < 2000)) return;
+    seat.snapAt = now;
+    this.sendGame(client, { t: "snap", f: this.match.frame, state: cloneState(this.match) });
+  }
+
+  private confirmInputs(): void {
+    const state = this.match, now = Date.now();
+    if (!state || this.ended || now < this.startAt) return;
+    const first = state.frame + 1;
+    const batch: [number, number][] = [];
+    const hashes: ServerMsg[] = [];
+    while (batch.length < 600) {
+      const f = state.frame + 1;
+      const pair = this.pendingInputs.get(f) ?? [null, null];
+      for (const seat of this.seats.values()) if (!seat.connected) pair[seat.slot] = 0;
+      if ((pair[0] === null || pair[1] === null) && now < this.startAt + f * 1000 / 60 + 100) break;
+      const confirmed: [number, number] = [pair[0] ?? this.previous[0], pair[1] ?? this.previous[1]];
+      this.pendingInputs.delete(f); this.previous = confirmed;
+      step(state, confirmed); batch.push(confirmed);
+      if (f % 60 === 0) {
+        const h = checksum(state); this.hashes.set(f, h);
+        if (this.hashes.size > 4) this.hashes.delete(this.hashes.keys().next().value!);
+        hashes.push({ t: "hash", f, h });
+      }
+      if (state.phase === "matchEnd") { this.ended = true; break; }
+    }
+    if (batch.length) this.emit({ t: "cf", f: first, b: batch });
+    for (const hash of hashes) this.emit(hash);
+    if (this.ended) this.emit({ t: "end", winner: state.winner });
   }
 
   private noteInvalid(client: Client, kind: string): void {

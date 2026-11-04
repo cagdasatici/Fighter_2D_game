@@ -21,7 +21,9 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S10 | FX, HUD, stages, audio | S9 | TODO | | |
 | S11 | Menus, char select, Versus CPU, Training, CPU AI | S10 | TODO | | |
 | S12a | Server infra copy + FightRoom placeholder (no sim) | S0 | DONE | 5f40b10 | docs/test-results/S12a.md |
-| S12 | Server: copied infra + FightRoom input authority (remaining: S12b) | S7 | TODO | | |
+| S12 | Server infrastructure + two-human input authority (S12a + S12b) | S7 | DONE | pending commit | docs/test-results/S12b.md |
+| S12b | Two-human input-authoritative FightRoom | S7, S12a | DONE | pending commit | docs/test-results/S12b.md |
+| S12c | Server CPU seats | S11, S12b | TODO | | |
 | S13 | Client rollback netcode + online flow | S11, S12 | TODO | | |
 | S14 | Touch controls + gamepad + iPad PWA + play script | S13 | TODO | | |
 | S15 | Browser tests, polish pass, release checklist | S14 | TODO | | |
@@ -125,11 +127,19 @@ RESOLVED by decision 0004 (same-move hits continue a juggle; liveWireHop vs air 
 **Tests:** CPU deterministic (same seed → same inputs over 3000 frames); CPU vs CPU match ends with a winner within 3 × ROUND_FRAMES; CPU on hard blocks ≥ 70% of `5HK` attempts in a scripted scenario.
 **Commit:** `S11: add menus, character select, CPU opponent and training mode`
 
-## S12 — Server infra + FightRoom
+## S12 / S12b — Server infra + two-human FightRoom
+**S12b scope (owner-confirmed):** two human players only; full §11.2/§11.3 authority flow and existing S12 tests. CPU seats are deferred to S12c. Prerequisites S7 and S12a are DONE.
 **Files:** copied server files per spec §14; `apps/server/src/rooms/FightRoom.ts`, `packages/shared/src/net/protocol.ts`, `ops/scripts/{play.ts,invite.ts,admin-setup.ts,admin-hash.ts,revoke-session.ts,secrets-scan.ts}`, `tests/integration/fight-room.test.ts`, `tests/unit/protocol.test.ts`.
 **Steps:** spec §11.2, §11.3. Copy auth/invite/session/admin unchanged except names. Room name `fight`.
 **Tests:** protocol rejects out-of-range `b`, negative `f`, unknown `t`; integration: 2 sdk clients pick, ready, receive `start`, send 600 frames of scripted inputs, receive `cf` for all frames, `hash` matches local replay; a client that stops sending gets inputs auto-filled after 100 ms; reconnection within 20 s resumes; forfeit after 20 s.
 **Commit:** `S12: add server infrastructure and input-authoritative FightRoom`
+
+## S12c — Server CPU seats
+**Prerequisites:** S11 and S12b DONE.
+**Files:** `apps/server/src/rooms/FightRoom.ts`, `tests/integration/fight-room-cpu.test.ts`.
+**Steps:** add CPU seats to FightRoom using `packages/shared/src/ai/cpu.ts` per spec §11.3.
+**Tests:** one integration test of a human against a CPU; standard repository checks.
+**Commit:** `S12c: add server CPU seats to FightRoom`
 
 ## S13 — Rollback client + online flow
 **Files:** `apps/client/src/net/{RoomClient.ts,ClockSync.ts,Rollback.ts}`, `ui/Lobby.ts`, `ui/RoomList.ts`, `tests/unit/rollback.test.ts`, `tests/integration/rollback-e2e.test.ts`.

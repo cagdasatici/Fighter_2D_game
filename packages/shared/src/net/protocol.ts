@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { CHARS } from "../chars/index.js";
+import type { MatchState } from "../sim/types.js";
 
 /** Network contracts (spec §11.2). Every message is strict and validated in both directions. */
 export const PROTOCOL_VERSION = 1 as const;
@@ -50,8 +52,33 @@ export const ConfirmedMsgSchema = z.strictObject({
   t: z.literal("cf"), f: frame, b: z.array(z.tuple([byte, byte])).min(1).max(600),
 });
 export const HashMsgSchema = z.strictObject({ t: z.literal("hash"), f: frame, h: u32 });
-// TODO(S12b): replace z.unknown() with the MatchState schema once sim/types.ts exists (S5+).
-export const SnapMsgSchema = z.strictObject({ t: z.literal("snap"), f: frame, state: z.unknown() });
+const integer = z.number().int().safe();
+const nonnegative = integer.nonnegative();
+const FighterSchema = z.strictObject({
+  char: CharIdSchema, x: integer, y: integer, vx: integer, vy: integer,
+  facing: z.union([z.literal(1), z.literal(-1)]), hp: integer, meter: nonnegative,
+  state: z.enum(["idle", "walkF", "walkB", "crouch", "jumpSquat", "air", "land", "dashF", "dashB", "attack", "hitstun", "blockstun", "juggle", "knockdown", "getup", "thrown", "throwing", "techSep", "ko", "win"]),
+  stateFrame: nonnegative, move: z.string().nullable(), moveFrame: nonnegative, moveHitMask: integer,
+  stun: nonnegative, hitstop: nonnegative, pushRemain: integer, pushPerFrame: integer,
+  crouching: z.boolean(), airborne: z.boolean(), invuln: z.enum(["none", "full", "strike", "projectile"]), invulnFrames: nonnegative,
+  comboHits: nonnegative, history: z.array(byte).length(40), historyHead: nonnegative.max(39), buffered: nonnegative,
+  chargeBack: nonnegative, chargeGrace: nonnegative, lastPressFrame: integer, cancelOk: z.boolean(), counterArmed: z.boolean(),
+  airJumps: nonnegative, gravityScale: nonnegative, wins: nonnegative,
+  lockLeft: nonnegative, lockTimer: nonnegative, rehit: nonnegative, spCount: nonnegative, superScale: nonnegative,
+});
+export const MatchStateSchema: z.ZodType<MatchState> = z.strictObject({
+  frame: nonnegative, rng: u32, phase: z.enum(["intro", "fight", "roundEnd", "matchEnd"]), phaseFrame: nonnegative,
+  round: nonnegative, timer: nonnegative, superFreeze: nonnegative, superBy: slot.nullable(),
+  fighters: z.tuple([FighterSchema, FighterSchema]),
+  projectiles: z.array(z.strictObject({ owner: slot, kind: z.string(), x: integer, y: integer, vx: integer, vy: integer,
+    gravity: integer, w: nonnegative, h: nonnegative, hits: nonnegative, hitInterval: nonnegative, cooldown: integer,
+    life: integer, def: z.string(), exploding: nonnegative })),
+  events: z.array(z.strictObject({ frame: nonnegative, kind: z.enum(["hit", "block", "counter", "throw", "super", "ko", "parry", "projectileClash", "whiff", "land", "special"]),
+    x: integer, y: integer, strength: z.union([z.literal(0), z.literal(1), z.literal(2)]), by: slot })),
+  stage: StageIdSchema, winner: slot.nullable(), drawRounds: nonnegative,
+});
+export const SnapMsgSchema = z.strictObject({ t: z.literal("snap"), f: nonnegative, state: MatchStateSchema })
+  .refine((m) => m.f === m.state.frame, "snapshot frame mismatch");
 export const EndMsgSchema = z.strictObject({ t: z.literal("end"), winner: slot.nullable() });
 export const ServerMsgSchema = z.discriminatedUnion("t", [
   LobbyMsgSchema, StartMsgSchema, ConfirmedMsgSchema, HashMsgSchema, SnapMsgSchema, EndMsgSchema,
@@ -84,11 +111,17 @@ export function parseServerMsg(raw: unknown): ServerMsg | null {
 
 // ---- HTTP session / join contracts (copied from battlegrounds) ----
 const hashStr = z.string().regex(/^[0-9a-f]{16}$/);
-/**
- * Content hash shared by client and server for the compatibility check.
- * TODO(S12b): derive from character data (chars/index.ts) once S3/S7 land; until then a fixed value per protocol.
- */
-export const CONTENT_HASH = "0000000000000001" as const;
+/** Two independent FNV-1a lanes over roster data: browser/server identical compatibility key. */
+export function contentHash(data: unknown): string {
+  const text = JSON.stringify(data);
+  let a = 0x811c9dc5, b = 0x9e3779b9;
+  for (let i = 0; i < text.length; i++) {
+    a = Math.imul(a ^ text.charCodeAt(i), 0x01000193) >>> 0;
+    b = Math.imul(b ^ text.charCodeAt(i), 0x01000193) >>> 0;
+  }
+  return a.toString(16).padStart(8, "0") + b.toString(16).padStart(8, "0");
+}
+export const CONTENT_HASH = contentHash(CHARS);
 
 export function graphemeCount(s: string): number {
   const Seg = (Intl as unknown as { Segmenter?: new (l?: string, o?: object) => { segment(s: string): Iterable<unknown> } }).Segmenter;
