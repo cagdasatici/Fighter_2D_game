@@ -59,7 +59,7 @@ export function rebind(s: Settings, p: 0 | 1, action: Action, code: string): voi
 const label = (code: string): string => code.replace(/^(Key|Digit|Arrow)/, '');
 
 /** Settings screen. `apply` is called after every change (audio, keyboard); returns cleanup. */
-export function showSettings(root: HTMLElement, s: Settings, apply: () => void, back: () => void): () => void {
+export function showSettings(root: HTMLElement, s: Settings, apply: () => void, back: () => void, editLayout?: () => void): () => void {
   let capture: { p: 0 | 1; a: Action; btn: HTMLButtonElement } | null = null;
   const changed = (): void => { saveSettings(s); apply(); };
   const slider = (name: string, get: () => number, set: (v: number) => void): HTMLElement => {
@@ -105,7 +105,7 @@ export function showSettings(root: HTMLElement, s: Settings, apply: () => void, 
   ];
   if (import.meta.env.DEV) rows.push(check('Debug boxes (dev, F1)', () => s.debugBoxes, v => { s.debugBoxes = v; }));
   const reset = button('Reset keys', () => { s.keys = [{ ...DEFAULT_KEYS[0] }, { ...DEFAULT_KEYS[1] }]; changed(); drawKeys(); });
-  const panel = screen('Settings', [...rows, el('h3', {}, ['Keys']), keyTable, el('div', { class: 'kb-actions' }, [reset, button('Back', back)])]);
+  const panel = screen('Settings', [...rows, el('h3', {}, ['Keys']), keyTable, el('div', { class: 'kb-actions' }, [reset, ...(editLayout ? [button('Touch layout', editLayout)] : []), button('Back', back)])]);
   root.replaceChildren(panel);
   window.addEventListener('keydown', onKey, true);
   return () => { window.removeEventListener('keydown', onKey, true); panel.remove(); };

@@ -1,5 +1,8 @@
-import { CHARS, METER_MAX, PX, cloneState, createCpu, createMatch, cpuInput, getMove, step, type CharId, type CpuState, type Fighter, type InputByte, type MatchState, type StageId } from '@kb/shared';
+import { CHARS, METER_MAX, PX, chargeReady, cleanSocd, cloneState, createCpu, createMatch, cpuInput, getMove, step, type CharId, type CpuState, type Fighter, type InputByte, type MatchState, type StageId } from '@kb/shared';
 import { Keyboard } from '../input/Keyboard.js';
+import { Touch } from '../input/Touch.js';
+import { Gamepad } from '../input/Gamepad.js';
+import { loadLayout, showLayoutEdit } from '../ui/LayoutEdit.js';
 import { Canvas, GROUND, HEIGHT, WIDTH } from '../render/Canvas.js';
 import { Camera } from '../render/Camera.js';
 import { drawDebug } from '../render/DebugDraw.js';
@@ -42,6 +45,8 @@ export class AppFlow {
   private readonly canvas: Canvas;
   private readonly camera = new Camera();
   private readonly keyboard: Keyboard;
+  private readonly touch: Touch;
+  private readonly gamepad: Gamepad;
   private readonly loop: GameLoop;
   private readonly ui: HTMLElement;
   private closeUi: (() => void) | null = null;
@@ -74,6 +79,11 @@ export class AppFlow {
     this.ui.className = 'kb-ui';
     document.body.append(this.ui);
     this.keyboard = new Keyboard(this.settings.keys, () => { this.boxes = !this.boxes; }, () => this.togglePause());
+    this.touch = new Touch(loadLayout(), () => {
+      const side = this.net?.rb?.you ?? 0, f = this.state.fighters[side];
+      return { char: f.char, facing: f.facing, charged: chargeReady(f), meterFull: f.meter >= METER_MAX };
+    }, () => this.togglePause());
+    this.gamepad = new Gamepad(() => this.togglePause());
     this.applySettings();
     this.loop = new GameLoop(() => this.tick(), alpha => this.render(alpha));
     window.addEventListener('pointerdown', this.unlockAudio);
@@ -103,16 +113,26 @@ export class AppFlow {
 
   // ---- scenes ----
   private toTitle(): void {
-    this.scene = 'menu'; this.paused = false; this.audio.setStage(null);
+    this.setScene('menu'); this.paused = false; this.audio.setStage(null);
     this.show(root => showTitle(root, c => {
-      if (c === 'settings') this.show(r => showSettings(r, this.settings, () => this.applySettings(), () => this.toTitle()));
+      if (c === 'settings') this.toSettings();
       else if (c === 'howto') this.show(r => showHowToPlay(r, this.settings.keys[0], () => this.toTitle()));
       else if (c === 'online') this.toOnline();
       else if (c === 'cpu' || c === 'local' || c === 'training') { this.mode = c; this.toSelect(); }
     }));
   }
+  private toSettings(): void {
+    this.show(r => showSettings(r, this.settings, () => this.applySettings(), () => this.toTitle(),
+      () => this.show(r2 => showLayoutEdit(r2, loadLayout(), l => { this.touch.setLayout(l); this.toSettings(); }))));
+  }
+  /** P1/P2 bytes from keyboard, gamepads and (P1 only) touch, merged then SOCD-cleaned. */
+  private readInputs(): [InputByte, InputByte] {
+    const k = this.keyboard.read(), g = this.gamepad.read();
+    return [cleanSocd(k[0] | g[0] | this.touch.read()), cleanSocd(k[1] | g[1])];
+  }
+  private setScene(scene: Scene): void { this.scene = scene; this.touch.setActive(scene === 'fight'); }
   private toSelect(): void {
-    this.scene = 'menu'; this.paused = false; this.audio.setStage(null);
+    this.setScene('menu'); this.paused = false; this.audio.setStage(null);
     this.show(root => showCharSelect(root, {
       twoHumans: this.mode === 'local', keys: this.settings.keys, initial: this.chars,
       done: r => { this.chars = r.chars; this.stage = r.stage; this.startMatch(); this.toVs(); },
@@ -120,12 +140,12 @@ export class AppFlow {
     }));
   }
   private toVs(): void {
-    this.scene = 'vs'; this.sceneFrame = 0;
+    this.setScene('vs'); this.sceneFrame = 0;
     this.show(root => showVs(root, this.chars));
   }
-  private enterFight(): void { this.scene = 'fight'; this.paused = false; this.sceneFrame = 0; this.hideUi(); this.keyboard.setKeys(this.settings.keys); }
+  private enterFight(): void { this.setScene('fight'); this.paused = false; this.sceneFrame = 0; this.hideUi(); this.keyboard.setKeys(this.settings.keys); }
   private toResults(): void {
-    this.scene = 'results'; this.sceneFrame = 0; this.audio.setStage(null);
+    this.setScene('results'); this.sceneFrame = 0; this.audio.setStage(null);
     this.show(root => showResults(root, this.state, this.mode === 'cpu' ? 1 : null, c => {
       if (c === 'rematch') { this.startMatch(); this.toVs(); } else if (c === 'select') this.toSelect(); else this.toTitle();
     }));
@@ -139,7 +159,7 @@ export class AppFlow {
     return this.net;
   }
   private toOnline(): void {
-    this.scene = 'menu'; this.audio.setStage(null);
+    this.setScene('menu'); this.audio.setStage(null);
     const net = this.onlineClient();
     this.show(root => showOnlineLobby(root, {
       list: () => net.client.listRooms(),
@@ -152,7 +172,7 @@ export class AppFlow {
   private toRoom(): void {
     const net = this.net;
     if (!net) return;
-    this.scene = 'menu';
+    this.setScene('menu');
     net.offs.push(net.client.onMessage(m => this.onServer(m)));
     net.offs.push(net.client.onClose(() => { if (this.net === net) { this.leaveOnline(); this.toTitle(); } }));
     // Clock pings once per second while seated (cleared in leaveOnline).
@@ -203,7 +223,7 @@ export class AppFlow {
     clock.frame();
     const before = this.state.frame;
     const prev = cloneState(this.state);
-    rb.tick(clock.serverMs(Date.now()), clock.rttMs, () => this.keyboard.read()[0]);
+    rb.tick(clock.serverMs(Date.now()), clock.rttMs, () => this.readInputs()[0]);
     this.state = rb.current;
     if (this.state.frame !== before) this.previous = prev;
     const events = rb.takeEvents();
@@ -220,7 +240,7 @@ export class AppFlow {
     }
   }
   private toResultsOnline(): void {
-    this.scene = 'results'; this.sceneFrame = 0; this.audio.setStage(null);
+    this.setScene('results'); this.sceneFrame = 0; this.audio.setStage(null);
     this.show(root => showResults(root, this.state, null, c => {
       if (c === 'rematch') this.net?.client.send({ t: 'rematch' });
       else if (c === 'select') { this.leaveOnline(); this.toOnline(); }
@@ -230,10 +250,10 @@ export class AppFlow {
 
   private togglePause(): void {
     if (this.scene !== 'fight' || this.net?.rb) return; // online has no pause
-    if (this.paused) { this.paused = false; this.hideUi(); return; }
-    this.paused = true;
+    if (this.paused) { this.paused = false; this.hideUi(); this.touch.setActive(true); return; }
+    this.paused = true; this.touch.setActive(false);
     this.show(root => showPause(root, this.mode === 'training' ? this.training : null, c => {
-      if (c === 'resume') { this.paused = false; this.hideUi(); }
+      if (c === 'resume') { this.paused = false; this.hideUi(); this.touch.setActive(true); }
       else if (c === 'restart') { this.startMatch(); this.enterFight(); }
       else if (c === 'select') this.toSelect(); else this.toTitle();
     }));
@@ -259,7 +279,7 @@ export class AppFlow {
     if (this.scene === 'vs') { if (++this.sceneFrame >= VS_FRAMES) this.enterFight(); return; }
     if (this.scene !== 'fight') { this.sceneFrame++; return; }
     if (this.paused) return;
-    const [p1, p2] = this.keyboard.read();
+    const [p1, p2] = this.readInputs();
     const second = this.mode === 'local' ? p2 : this.mode === 'cpu' && this.cpu ? cpuInput(this.cpu, this.state) : dummyInput(this.state, this.training.dummy);
     this.advance([p1, second]);
     if (this.state.phase === 'matchEnd' && this.state.phaseFrame >= 90) this.toResults();
@@ -326,7 +346,7 @@ export class AppFlow {
   }
   dispose(): void {
     this.leaveOnline();
-    this.loop.dispose(); this.keyboard.dispose(); this.canvas.dispose();
+    this.loop.dispose(); this.keyboard.dispose(); this.touch.dispose(); this.gamepad.dispose(); this.canvas.dispose();
     this.hideUi(); this.ui.remove();
     this.removeGestureListeners();
     document.removeEventListener('visibilitychange', this.onVisibility);

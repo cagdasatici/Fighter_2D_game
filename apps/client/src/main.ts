@@ -11,3 +11,8 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has('gallery')) 
   window.addEventListener('pagehide', dispose);
   if (import.meta.hot) import.meta.hot.dispose(dispose);
 }
+
+// S14 PWA: offline shell for the installed iPad app (production builds only; dev never registers a worker).
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => { /* offline shell is optional */ });
+}

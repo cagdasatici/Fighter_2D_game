@@ -82,6 +82,7 @@ async function main(): Promise<void> {
     lan = true;
     say(`Home network mode: ${origin} (plain HTTP, reachable by devices on this network)`);
     say("iPad Safari: open the link, then Share > Add to Home Screen.");
+    say("Note: plain HTTP has no offline cache (service workers need HTTPS); use --tailscale for the offline-capable install.");
     say("If macOS asks to allow incoming connections for node, click Allow.");
   }
 

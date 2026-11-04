@@ -55,3 +55,18 @@
 .kb-picks { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .kb-btn.kb-on { outline: 3px solid #4da3ff; }
 .kb-field { min-height: 44px; font: inherit; padding: 6px 10px; border-radius: 8px; }
+/* S14 touch controls (spec §12.3) */
+.kb-touch { position: fixed; inset: 0; z-index: 5; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.kb-touch[hidden] { display: none; }
+.kb-touch-edit { z-index: 9; pointer-events: none; }
+.kb-touch-edit .kb-tbtn { pointer-events: auto; cursor: grab; }
+.kb-tbtn { position: absolute; box-sizing: border-box; border-radius: 50%; border: 3px solid #1b1b2a; background: rgba(255, 216, 74, 0.55);
+  color: #1b1b2a; font: 700 18px system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; }
+.kb-tbtn-SP { background: rgba(74, 168, 255, 0.6); color: #fff; }
+.kb-tbtn.kb-down { background: rgba(255, 241, 168, 0.95); }
+.kb-stick { position: absolute; width: 120px; height: 120px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.5); background: rgba(0, 0, 0, 0.2); pointer-events: none; }
+.kb-stick[hidden] { display: none; }
+.kb-knob { position: absolute; left: 36px; top: 36px; width: 48px; height: 48px; border-radius: 50%; background: rgba(255, 255, 255, 0.7); }
+.kb-tpause { position: absolute; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: 44px; height: 44px;
+  border-radius: 8px; border: 2px solid #1b1b2a; background: rgba(255, 255, 255, 0.7); font: 700 16px system-ui, sans-serif; }
+html, body { overscroll-behavior: none; }
