@@ -8,7 +8,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 
 | Slice | Title | Prereq | Status | Commit | Evidence |
 |---|---|---|---|---|---|
-| S0 | Repo scaffold + tooling | — | TODO | | |
+| S0 | Repo scaffold + tooling | — | DONE | 9647c8d | docs/test-results/S0.md |
 | S1 | Fixed math, RNG, input bytes, history | S0 | TODO | | |
 | S2 | Motion parser | S1 | TODO | | |
 | S3 | Char data model + base normals + 5 char data files | S1 | TODO | | |
