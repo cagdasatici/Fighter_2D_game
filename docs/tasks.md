@@ -14,7 +14,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S3 | Char data model + base normals + 5 char data files | S1 | DONE (provisional values, see S3 notes) | 371f477 | docs/test-results/S3.md |
 | S4 | Sim core: state, movement, jumps, dashes, pushboxes | S2, S3 | DONE | 76b3f62 | docs/test-results/S4.md |
 | S5 | Attacks, hit/block resolution, combos, throws | S4 | DONE | 8496beb | docs/test-results/S5.md |
-| S6 | Projectiles, specials, special rules per char | S5 | DONE (data findings, see S6 notes) | COMMIT_TBD | docs/test-results/S6.md |
+| S6 | Projectiles, specials, special rules per char | S5 | DONE (data findings, see S6 notes) | bf79207 | docs/test-results/S6.md |
 | S7 | Supers, meter, round/match flow, balance guardrails, determinism suite | S6 | TODO | | |
 | S8 | Client shell: canvas, game loop, keyboard, local 2P with debug boxes | S7 | TODO | | |
 | S9 | Puppet renderer + 5 skins + pose library | S8 | TODO | | |
