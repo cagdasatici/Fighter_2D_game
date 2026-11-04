@@ -80,7 +80,7 @@ S12 can run in parallel with S8–S11 (different files).
 **Steps:** spec §8.1 attack start/advance/cancel, §8.3 entire (counter hit, combo scaling, juggle rules, trades, hurtExtend, throws + tech, command grabs).
 **Tests (each named after a rule):** LP hits standing dummy at 50 px, whiffs at 120 px; damage exact; hitstun length; blockstun length; frame advantage LP on block = +1 (Bolt); low must be crouch-blocked (stand-block fails); overhead must be stand-blocked; airborne can't block; chip can't KO; counter hit ×1.2 +2 stun; combo scaling sequence 100/100/80/70; cancel LP→special only on hit/block not whiff; chain LP→LP; trade both damaged; hitstop both 8 / 11; pushback transfer at wall; throw connects at 70 px not 71; tech within 7 frames; throw whiff recovery; juggle invulnerability except launch moves; knockdown → getup invuln.
 **Commit:** `S5: add attack resolution, blocking, combos and throws`
-**BLOCKED:** "frame advantage LP on block = +1 (Bolt)": Bolt 5LP is startup 4 / active 2 / recovery 7, blockstun 9. Hit on move frame 5 leaves 1 active + 7 recovery = 8 frames vs blockstun 9 → +1 (measured). +2 only results from blockstun − recovery (ignoring the remaining active frame). Which is intended: change the test to +1, or change data (e.g. blockstun 10)? Test currently asserts +1.
+**RESOLVED (2026-11-04):** +1 is correct (matches characters.md §9 guardrail: blockstun − (remaining active − 1 + recovery)). The +2 in the test list was a spec typo; data unchanged.
 **Notes (S5 session):** Bolt `6HP` (Hat Butt) box starts at y 70 = crouch hurtbox top, so it whiffs crouchers under strict AABB; fix in data (S3 owner) if overheads should hit crouchers. Other interpretations: docs/test-results/S5.md.
 
 ## S6 — Projectiles and specials
@@ -141,4 +141,5 @@ S12 can run in parallel with S8–S11 (different files).
 ## S15 — Browser tests and release checklist
 **Files:** `tests/browser/{title,cpu-match,online-two-tabs}.spec.ts`, `docs/release-checklist.md`, `README.md`.
 **Steps:** spec §16 browser tests; README quick start mirroring battlegrounds (`pnpm play`, admin setup, invite). Release checklist: frame-rate sample on iPad (NOT RUN placeholder), audio unlock, reconnect, all 5 chars × all specials manually exercised (checkboxes).
-**Commit:** `S15: add browser tests, README and release checklist`**RESOLVED (2026-11-04):** +1 is correct (matches characters.md §9 guardrail: blockstun − (remaining active − 1 + recovery)). The +2 in the test list was a spec typo; data unchanged.
+**Commit:** `S15: add browser tests, README and release checklist`
+
