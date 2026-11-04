@@ -17,8 +17,9 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S6 | Projectiles, specials, special rules per char | S5 | DONE (data findings, see S6 notes) | bf79207 | docs/test-results/S6.md |
 | S7 | Supers, meter, round/match flow, balance guardrails, determinism suite | S6 | DONE (liveWireHop resolved by decision 0004) | 779d930 | docs/test-results/S7.md |
 | S8 | Client shell: canvas, game loop, keyboard, local 2P with debug boxes | S7 | DONE (browser verified; physical keyboard check NOT RUN) | 940b07a | docs/test-results/S8.md |
-| S9 | Puppet renderer + 5 skins + pose library | S8 | TODO | | |
-| S10 | FX, HUD, stages, audio | S9 | TODO | | |
+| S9 | Puppet renderer + 5 skins + pose library | S8 | IMPLEMENTED – ART APPROVAL PENDING | (see S9 commit) | docs/test-results/S9.md |
+| S10 | FX, HUD, stages + audio integration | S9, S10a | TODO | | |
+| S10a | Standalone synthesized audio + stage music | S0 | BLOCKED (copy contract question below) | | |
 | S11 | Menus, char select, Versus CPU, Training, CPU AI | S10 | TODO | | |
 | S12a | Server infra copy + FightRoom placeholder (no sim) | S0 | DONE | 5f40b10 | docs/test-results/S12a.md |
 | S12 | Server infrastructure + two-human input authority (S12a + S12b) | S7 | DONE | aacf6a7 | docs/test-results/S12b.md |
@@ -115,11 +116,21 @@ RESOLVED by decision 0004 (same-move hits continue a juggle; liveWireHop vs air 
 **Visual check:** add `/?gallery` dev page drawing all 5 characters × 12 key poses in a grid; take a screenshot into `docs/test-results/S9-gallery.png`. **STOP and report** with the screenshot for owner approval before S10 (art direction checkpoint).
 **Commit:** `S9: add code-drawn puppet rig, pose library and five skins`
 
-## S10 — FX, HUD, stages, audio
-**Files:** `render/Fx.ts`, `render/Hud.ts`, `render/Stage.ts`, `render/stages/{rooftop,bamboo,volcano}.ts`, `audio/{AudioBus.ts,synth.ts}` (copied), `audio/sfx.ts`, `audio/music.ts`.
-**Steps:** spec §9.4–9.6, §13, characters' VFX lines. FX consume `state.events` exactly once per frame (`lastFxFrame` guard). Audio unlock on first pointer/key.
+## S10 — FX, HUD, stages + audio integration
+**Prerequisites:** S9 and S10a DONE.
+**Files:** `render/Fx.ts`, `render/Hud.ts`, `render/Stage.ts`, `render/stages/{rooftop,bamboo,volcano}.ts`. Audio module implementation belongs to S10a.
+**Steps:** spec §9.4–9.6 and characters' VFX lines. FX consume `state.events` exactly once per frame (`lastFxFrame` guard). Consume S10a audio APIs from the presentation layer; integration must preserve the frame guard and gesture-unlock lifecycle.
 **Tests:** `Hud` format helpers (timer digits, combo text) unit-tested; Fx particle pool never exceeds 256 under 1000 events.
 **Commit:** `S10: add hit effects, HUD, procedural stages and synthesized audio`
+
+## S10a — Standalone synthesized audio + stage music
+**Prerequisites:** S0 DONE. No S9 renderer dependency; no changes to S9 files.
+**Files:** `apps/client/src/audio/{AudioBus.ts,synth.ts,sfx.ts,music.ts}`, `tests/unit/audio.test.ts`, `docs/test-results/S10a.md`, `docs/tasks.md`.
+**Scope (owner-requested):** split the audio module implementation from S10. Implement spec §13 procedural sound recipes, one four-bar bass/drum loop per stage, default music volume 0.25, volume/music controls for later Settings integration, gesture unlock, and resource cleanup. Presentation wiring remains S10; Settings UI remains S11.
+**BLOCKED:** Spec §13 says to copy `AudioBus.ts` and `synth.ts` from battlegrounds unchanged. The reference bus hardcodes one ambient music buffer and its sound API accepts only battlegrounds recipe keys; it cannot play the required stage-specific music and new SFX recipes unchanged. May S10a adapt these two copied files to the Knockout Bash sound keys and stage loops while retaining their tested voice-cap, gain, suspension and disposal behavior?
+**Tests:** offline fake-WebAudio tests for unlock, volume/toggle controls, stage loop switching, bounded voices and disposal; recipe tests against §13; required repository checks. Browser listening and physical iPad checks must be recorded NOT RUN unless actually performed.
+**STOP:** resolve the copy-contract question above before implementing code.
+**Commit:** `S10a: add synthesized combat audio and stage music`
 
 ## S11 — Menus, CPU, Training
 **Files:** `ui/{Title,CharSelect,VsScreen,Results,Settings,HowToPlay,Pause}.ts`, `ui/experience.css`, `packages/shared/src/ai/cpu.ts`, `tests/unit/cpu.test.ts`.
