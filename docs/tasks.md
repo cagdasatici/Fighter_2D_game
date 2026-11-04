@@ -12,7 +12,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S1 | Fixed math, RNG, input bytes, history | S0 | DONE | c4cd25f | docs/test-results/S1.md |
 | S2 | Motion parser | S1 | DONE | a9bdd68 | docs/test-results/S2.md |
 | S3 | Char data model + base normals + 5 char data files | S1 | DONE (provisional values, see S3 notes) | 371f477 | docs/test-results/S3.md |
-| S4 | Sim core: state, movement, jumps, dashes, pushboxes | S2, S3 | DONE | (pending) | docs/test-results/S4.md |
+| S4 | Sim core: state, movement, jumps, dashes, pushboxes | S2, S3 | DONE | 76b3f62 | docs/test-results/S4.md |
 | S5 | Attacks, hit/block resolution, combos, throws | S4 | TODO | | |
 | S6 | Projectiles, specials, special rules per char | S5 | TODO | | |
 | S7 | Supers, meter, round/match flow, balance guardrails, determinism suite | S6 | TODO | | |
