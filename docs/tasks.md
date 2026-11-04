@@ -94,6 +94,7 @@ S12 can run in parallel with S8–S11 (different files).
 - S7 needs a rule for combo scaling on multi-hit supers ("no scaling" totals).
 
 ## S7 — Supers, meter, rounds, determinism
+**Also implement decision 0003:** hardHatHop box `0,-40,55,50`; multi-hit projectiles freeze during the hitstop they cause; super hits use the first hit's scaling; rising-special balance totals measured vs an airborne target. Add a test for each.
 **Files:** `sim/round.ts`, meter logic in `hit.ts`/`fighter.ts`, `tests/unit/sim-super.test.ts`, `sim-round.test.ts`, `determinism.test.ts`, `balance.test.ts`.
 **Tests:** super freeze 40 frames, meter cost; each super total damage matches characters.md ±1 (no scaling, fresh combo); round timer 99 s; time-over winner; double KO draw; best of 3; meter carried between rounds; spec §16 determinism (a)(b)(c); balance guardrails all 5 rules.
 **Commit:** `S7: add supers, meter, round flow and determinism suite`
