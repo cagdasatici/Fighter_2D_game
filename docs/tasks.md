@@ -11,7 +11,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S0 | Repo scaffold + tooling | — | DONE | 9647c8d | docs/test-results/S0.md |
 | S1 | Fixed math, RNG, input bytes, history | S0 | TODO | | |
 | S2 | Motion parser | S1 | TODO | | |
-| S3 | Char data model + base normals + 5 char data files | S1 | DONE (provisional values, see S3 notes) | HASH | docs/test-results/S3.md |
+| S3 | Char data model + base normals + 5 char data files | S1 | DONE (provisional values, see S3 notes) | 371f477 | docs/test-results/S3.md |
 | S4 | Sim core: state, movement, jumps, dashes, pushboxes | S2, S3 | TODO | | |
 | S5 | Attacks, hit/block resolution, combos, throws | S4 | TODO | | |
 | S6 | Projectiles, specials, special rules per char | S5 | TODO | | |
