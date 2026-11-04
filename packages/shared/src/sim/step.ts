@@ -1,11 +1,12 @@
 import { HK, HP, LK, LP, cleanSocd, type InputByte } from "../input/buttons.js";
 import { pressed, pushInput } from "../input/history.js";
 import { updateCharge } from "../input/motion.js";
-import { ROUND_INTRO_FRAMES } from "./constants.js";
-import { BUTTON_BUFFER, afterPhysics, stateMachine, updateFacing } from "./fighter.js";
-import { hits, pushback } from "./hit.js";
+import { SUPER_FREEZE_FRAMES } from "./constants.js";
+import { BUTTON_BUFFER, afterPhysics, stateMachine, superStarted, updateFacing } from "./fighter.js";
+import { event, hits, pushback } from "./hit.js";
 import { physics, pushboxes } from "./physics.js";
 import { ownedBy, projectiles } from "./projectile.js";
+import { round } from "./round.js";
 import { moveTick } from "./specials.js";
 import type { MatchState } from "./types.js";
 
@@ -27,27 +28,25 @@ export function step(s: MatchState, inputs: [InputByte, InputByte]): void {
   const live = s.phase === "fight";
   const prevX: [number, number] = [a.x, b.x];
   const wasAir: [boolean, boolean] = [a.airborne, b.airborne];
+  const stopped: [boolean, boolean] = [a.hitstop > 0, b.hitstop > 0];
   for (let i = 0; i < 2; i++) {
     const f = s.fighters[i]!, opp = s.fighters[1 - i]!;
     if (f.hitstop > 0) { f.hitstop--; continue; }
     updateFacing(f, opp);
-    stateMachine(f, opp, live ? cleanSocd(inputs[i]!) : 0, ownedBy(s, i));
+    stateMachine(f, opp, live ? cleanSocd(inputs[i]!) : 0, ownedBy(s, i), live);
+    if (superStarted(f)) {
+      // Spec §8.1: super freeze for both fighters (and projectiles) starting next frame.
+      s.superFreeze = SUPER_FREEZE_FRAMES; s.superBy = i as 0 | 1;
+      event(s, "super", i as 0 | 1, f, 2);
+    }
     const wasAir = f.airborne;
     physics(f);
     afterPhysics(f, wasAir);
     moveTick(s, i as 0 | 1);
   }
   pushboxes(s, prevX, [wasAir[0] && !a.airborne, wasAir[1] && !b.airborne]);
-  projectiles(s);
+  projectiles(s, stopped);
   hits(s);
   pushback(s);
   round(s);
-}
-
-// TODO(S7): timer, KO, round flow.
-function round(s: MatchState): void {
-  if (s.phase === "intro") {
-    s.phaseFrame++;
-    if (s.phaseFrame >= ROUND_INTRO_FRAMES) { s.phase = "fight"; s.phaseFrame = 0; }
-  }
 }

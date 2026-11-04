@@ -25,7 +25,7 @@ describe("S6 Volt specials", () => {
   });
   it("staticSpark hits 2 × 60", () => {
     const s = at(200, "volt");
-    runFrames(s, [...qcf(LP), ...hold(0, 0, 80)]);
+    runFrames(s, [...qcf(LP), ...hold(0, 0, 100)]); // +11: the spark freezes during its hitstop (decision 0003)
     expect(1000 - p2(s).hp).toBe(120);
   });
   it("liveWireHop: first hit 30 on f6; later hits rise out of reach of a grounded opponent (data finding, S6.md)", () => {

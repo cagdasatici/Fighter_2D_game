@@ -15,7 +15,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S4 | Sim core: state, movement, jumps, dashes, pushboxes | S2, S3 | DONE | 76b3f62 | docs/test-results/S4.md |
 | S5 | Attacks, hit/block resolution, combos, throws | S4 | DONE | 8496beb | docs/test-results/S5.md |
 | S6 | Projectiles, specials, special rules per char | S5 | DONE (data findings, see S6 notes) | bf79207 | docs/test-results/S6.md |
-| S7 | Supers, meter, round/match flow, balance guardrails, determinism suite | S6 | TODO | | |
+| S7 | Supers, meter, round/match flow, balance guardrails, determinism suite | S6 | DONE (1 BLOCKED sub-item: liveWireHop airborne total) | 779d930 | docs/test-results/S7.md |
 | S8 | Client shell: canvas, game loop, keyboard, local 2P with debug boxes | S7 | TODO | | |
 | S9 | Puppet renderer + 5 skins + pose library | S8 | TODO | | |
 | S10 | FX, HUD, stages, audio | S9 | TODO | | |
@@ -98,6 +98,7 @@ S12 can run in parallel with S8–S11 (different files).
 **Files:** `sim/round.ts`, meter logic in `hit.ts`/`fighter.ts`, `tests/unit/sim-super.test.ts`, `sim-round.test.ts`, `determinism.test.ts`, `balance.test.ts`.
 **Tests:** super freeze 40 frames, meter cost; each super total damage matches characters.md ±1 (no scaling, fresh combo); round timer 99 s; time-over winner; double KO draw; best of 3; meter carried between rounds; spec §16 determinism (a)(b)(c); balance guardrails all 5 rules.
 **Commit:** `S7: add supers, meter, round flow and determinism suite`
+BLOCKED: decision 0003 item 1 says rising specials deal their full listed damage to airborne targets, but `liveWireHop` (4 × 30 = 120) deals only 30 to an airborne opponent: hit 1 puts the target in `juggle`, and spec §8.3 lets only hits with `launch` connect on a juggled fighter, so hits 2-3 (no launch) cannot connect (measured 30, see S7.md). Options: (a) give liveWireHop hits 1-3 a small `launch`, (b) exempt hits of the same move from the juggle limit, (c) accept 30 vs air and change the listed total. Test `balance.test.ts` "volt liveWireHop … (BLOCKED)" is skipped until decided. jackhammerRise and risingCrane totals hold vs airborne targets.
 
 ## S8 — Client shell + local 2P (debug boxes)
 **Files:** `apps/client/src/{main.ts,app/GameLoop.ts,app/AppFlow.ts,input/Keyboard.ts,input/InputSource.ts,render/Canvas.ts,render/Camera.ts,render/DebugDraw.ts}`.

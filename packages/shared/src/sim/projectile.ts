@@ -6,7 +6,7 @@ import { JUGGLE_FALL_VX, JUGGLE_FALL_VY, METER_DEFENDER_PERCENT, STAGE_LEFT, STA
 import { addMeter, curMove } from "./fighter.js";
 import {
   PARRY_HITSTOP, blocksFrom, event, hurtboxes, moveInvuln, overlaps, parryWindow,
-  scaledDamage, setPushbackDir, toJuggle, type WorldBox,
+  hitDamage, setPushbackDir, toJuggle, type WorldBox,
 } from "./hit.js";
 import type { MatchState, Projectile } from "./types.js";
 
@@ -22,6 +22,20 @@ export function projectileDef(p: Projectile): ProjectileDef | null {
   return m?.projectile ?? null;
 }
 
+function projectileMove(p: Projectile): MoveDef | null {
+  const c = p.def.indexOf(":");
+  return getMove(p.def.slice(0, c) as CharId, p.def.slice(c + 1)) ?? null;
+}
+
+/**
+ * Decision 0003: a projectile with `hits > 1` freezes (no movement, life or cooldown countdown) while its target is in
+ * the hitstop it caused. Right after a contact `cooldown === hitInterval`; it only counts down once unfrozen.
+ */
+function frozenByHitstop(p: Projectile, def: ProjectileDef | null, stopped: readonly boolean[]): boolean {
+  if (!def || def.hits <= 1 || p.exploding > 0 || p.hits <= 0 || p.cooldown !== p.hitInterval) return false;
+  return stopped[1 - p.owner] === true && p.hits < def.hits;
+}
+
 export function ownedBy(s: MatchState, i: number): number {
   let n = 0;
   for (const p of s.projectiles) if (p.owner === i) n++;
@@ -35,7 +49,7 @@ export function spawnProjectile(s: MatchState, i: 0 | 1, m: MoveDef, offset: { x
   s.projectiles.push({
     owner: i, kind: d.kind,
     x: f.x + offset.x * PX * f.facing, y: f.y + offset.y * PX,
-    vx: d.vx * f.facing, vy: d.vy, gravity: d.gravity,
+    vx: d.vx * f.facing + 0, vy: d.vy, gravity: d.gravity,
     w: d.w, h: d.h, hits: d.hits, hitInterval: d.hitInterval, cooldown: 0, life: d.lifetime,
     def: `${f.char}:${m.id}`, exploding: 0,
   });
@@ -48,9 +62,11 @@ export function projBox(p: Projectile): WorldBox {
 }
 
 /** Spec §8 `projectiles(s)`: move, lifetime, ground explosion, clash, fighter contact, removal. */
-export function projectiles(s: MatchState): void {
+/** `stopped[i]` = fighter i started this step in hitstop (frozen this frame). */
+export function projectiles(s: MatchState, stopped: readonly boolean[] = [false, false]): void {
   const ps = s.projectiles;
   for (const p of ps) {
+    if (frozenByHitstop(p, projectileDef(p), stopped)) continue;
     if (p.cooldown > 0) p.cooldown--;
     if (p.exploding > 0) { p.exploding--; if (p.exploding === 0) p.life = 0; continue; }
     p.vy -= p.gravity; p.x += p.vx; p.y += p.vy; p.life--;
@@ -109,7 +125,7 @@ function contact(s: MatchState, p: Projectile): void {
     return;
   }
   const counter = !!dm && d.moveFrame <= dm.startup;
-  let dmg = scaledDamage(def.damage, d.comboHits);
+  let dmg = hitDamage(o, projectileMove(p)?.kind === "super", def.damage, d.comboHits);
   if (counter) dmg = idiv(dmg * 12, 10);
   d.hp -= dmg; if (d.hp < 0) d.hp = 0;
   d.comboHits++;

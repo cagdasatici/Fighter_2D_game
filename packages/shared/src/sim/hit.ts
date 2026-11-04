@@ -49,6 +49,17 @@ export function scaledDamage(damage: number, comboHits: number): number {
   return d < 1 ? 1 : d;
 }
 
+/**
+ * Damage for one hit by attacker `a` (rule 6). Supers: every hit uses the scale of the super's first hit
+ * (decision 0003), fixed in `a.superScale` on that hit; other moves use the defender's current combo count.
+ */
+export function hitDamage(a: Fighter, isSuper: boolean, damage: number, comboHits: number): number {
+  if (!isSuper) return scaledDamage(damage, comboHits);
+  if (a.superScale === 0) a.superScale = COMBO_SCALING[comboHits < 7 ? comboHits : 7] ?? 30;
+  const d = idiv(damage * a.superScale, 100);
+  return d < 1 ? 1 : d;
+}
+
 export function moveInvuln(f: Fighter, kinds: readonly string[]): boolean {
   if (kinds.includes(f.invuln)) return true;
   const m = f.state === "attack" ? curMove(f) : null;
@@ -114,8 +125,9 @@ export function setPushbackDir(d: Fighter, side: number, amount: number): void {
   d.pushRemain = side * amount; d.pushPerFrame = pushStep(d.pushRemain);
 }
 
-/** lockOnHit follow-up damage: unscaled (super totals in characters.md are unscaled), counts as a combo hit. */
-export function addLockHit(d: Fighter, dmg: number): void {
+/** lockOnHit follow-up damage: scaled like the super's first hit (decision 0003), counts as a combo hit. */
+export function addLockHit(a: Fighter, d: Fighter, base: number): void {
+  const dmg = hitDamage(a, true, base, d.comboHits);
   d.hp -= dmg; if (d.hp < 0) d.hp = 0;
   d.comboHits++;
   addMeter(d, idiv(dmg * METER_DEFENDER_PERCENT, 100));
@@ -123,7 +135,7 @@ export function addLockHit(d: Fighter, dmg: number): void {
 
 export function toJuggle(f: Fighter, vx: number, vy: number): void {
   f.state = "juggle"; f.stateFrame = 1; f.move = null; f.moveFrame = 0; f.cancelOk = false; f.counterArmed = false;
-  f.airborne = true; f.vx = vx; f.vy = vy; f.stun = 0; f.pushRemain = 0; f.pushPerFrame = 0; f.lockLeft = 0;
+  f.airborne = true; f.vx = vx + 0; f.vy = vy; // + 0: no -0 in state (spec §16 c) f.stun = 0; f.pushRemain = 0; f.pushPerFrame = 0; f.lockLeft = 0;
 }
 
 function apply(s: MatchState, i: 0 | 1, p: Pending): void {
@@ -160,7 +172,7 @@ function applyContact(s: MatchState, i: 0 | 1, p: Pending): void {
     event(s, "block", i, d, strength);
     return;
   }
-  let dmg = scaledDamage(h.damage, d.comboHits);
+  let dmg = hitDamage(a, m.kind === "super", h.damage, d.comboHits);
   if (p.counter) dmg = idiv(dmg * 12, 10);
   d.hp -= dmg; if (d.hp < 0) d.hp = 0;
   d.comboHits++;
