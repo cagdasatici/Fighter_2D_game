@@ -26,7 +26,7 @@ Every character starts from these 13 templates, then applies the overrides liste
 | `j.HK` | air HK | 8 | 5 | 0 | 85 | 8 | 18 | 14 | mid | 15,15,55,22 | 1300 | no | — | airKick | — |
 | `throw` | LP+LK (close) | 5 | 1 | 22 | 120 | — | — | — | — | range 70 px | — | yes | — | throwGrab/throwToss | — |
 
-**Special defaults:** any special/super field not listed uses: blockstun 16, chip = 10% of damage (integer), hitstop 11, pushback 1500, meterOnHit 30, level mid, knockdown false.
+**Special defaults:** any special/super/command-normal/projectile field not listed uses: hitstun = blockstun + 4, blockstun 16, chip = 10% of damage (integer), hitstop 11, pushback 1500, meterOnHit 30, level mid, knockdown false.
 
 Jump attacks: `landingRecovery` = 4 (spec `LANDING_RECOVERY_ATTACK`). 2HK `hitstun` is irrelevant (always knockdown).
 
@@ -115,7 +115,7 @@ Default character physics (overridden per char): `walkFwd 350`, `walkBack 280`, 
 | id | input | startup | active | recovery | dmg | details |
 |---|---|---|---|---|---|---|
 | `gulpGrab` | 360+P | 5 | 2 | 34 (whiff) | LP 200 / HP 240 | command grab, range LP 80 px / HP 65 px, unteachable. On grab: 50-frame animation (opponent hidden "inside" the puppet: render the victim scaled 0 and Chompa's belly bulges 1.3× for frames 10-35), then spit: victim launched vx 900 vy 1200 → knockdown. Damage applied on spit frame. Event `throw` strength 2. |
-| `eggLob` | QCB+P | 16 | — | 26 | 80 (chip 10) | projectile `egg`: offset (20,90), vx LP 300 / HP 520, vy 1200, gravity 70, w 20 h 24, explodeOnGround (explosion 80×60 px, 20 frames, 1 hit), on direct hit also explodes. KD on hit. Egg render: white oval with 4 random-but-seeded purple spots. |
+| `eggLob` | QCB+P | 16 | — | 26 | 80 (chip 10) | projectile `egg`: offset (20,90), lifetime 120, vx LP 300 / HP 520, vy 1200, gravity 70, w 20 h 24, explodeOnGround (explosion 80×60 px, 20 frames, 1 hit), on direct hit also explodes. KD on hit. Egg render: white oval with 4 random-but-seeded purple spots. |
 | `tailSpin` | charge back → forward + K | 6 | 24 | 18 | 3 hits × 35 | moves forward vx LK 600 / HK 850 for f6-29, box -30,10,90,50 (hits both sides), hits at f8, f16, f24, last hit KD. Invuln projectile f1-29. pose `spin` (whole puppet rotates 360° every 8 frames, render-only). |
 
 **Super — `stampedeRoll`** (QCF QCF + K): curls into a ball and rolls across the screen. startup 6, active 50, recovery 30. vx 1300; rebounds once off the wall (vx reverses at wall contact, facing unchanged). Box -30,0,60,60, hits every 6 frames (max 6 hits) × 55 dmg, chip 10 each. Invuln strike f1-12. Ends early when 6 hits land; final hit launch vx 500 vy 1400. VFX: dust trail every 3 frames, rotating spike silhouettes.
@@ -175,9 +175,9 @@ Default character physics (overridden per char): `walkFwd 350`, `walkBack 280`, 
 |---|---|---|---|---|---|---|
 | `jadePalm` | QCF+P | 13 | 4 | 24 | LP 100 / HP 130 (chip 15) | short-range energy blast: box LP `30,50,70,40`, HP `30,45,100,50` (HP startup 16). hitstun 22, blockstun 16, pushback 2500, KD on HP. Not a projectile (can't be clashed). VFX: jade `#3ddc97` circle that expands from the palm 20→60 px and fades, 6 leaf-shaped sparks. |
 | `rollingBun` | charge back → forward + P | 8 | 30 | 16 | LP 90 / HP 110 | ball roll: velocities f8 vx LP 900 / HP 1200; box -20,0,60,60; one hit, KD. Invuln projectile f1-38. Stops at wall. pose `spin`. |
-| `bambooCounter` | QCB+K | 3 | 18 (stance) | 22 (whiff) | counter 130 | stance f4-21: `counter: {from:4,to:21,damage:130}`. If struck by a non-throw strike/projectile in the window → parry (spec §8.3 rule 6): Bao plays a palm-strike response (8 frames), attacker takes 130 and is launched. Low attacks are **not** countered by LK version, overheads **not** countered by HK version (LK = high counter, HK = low counter). |
+| `bambooCounter` | QCB+K | 3 | 18 (stance) | 22 (whiff) | counter 130 | stance f4-21: `counter: {from:4,to:21,damage:130}`. If struck by a non-throw strike/projectile in the window → parry (spec §8.3 rule 6): Bao plays a palm-strike response (8 frames), attacker takes 130 and is launched. `counter.levels`: LK version `["mid","overhead"]` (high counter), HK version `["mid","low"]` (low counter); projectiles count as mid. |
 
-**Super — `dragonDumpling`** (QCF QCF + P): eats a dumpling (heal 80 on f10, can't exceed max hp), then at f30 fires `jadeDragon` projectile: w 90 h 70, vx 900, life 90, 5 hits every 4 frames × 50 dmg (last hit launch), chip 10 each, blockstun 20. Invuln strike f1-30 (the eating window is safe). Recovery 34. Total damage 250 + heal 80. VFX: jade serpent: head circle + 6 trailing circles following the head with a 3-frame delay each, gold whiskers lines, sparkle trail.
+**Super — `dragonDumpling`** (QCF QCF + P): eats a dumpling (heal 80 on f10, can't exceed max hp), then at f30 fires `jadeDragon` projectile: offset (60,60), w 90 h 70, vx 900, life 90, 5 hits every 4 frames × 50 dmg (last hit launch), chip 10 each, blockstun 20. Invuln strike f1-30 (the eating window is safe). Recovery 34. Total damage 250 + heal 80. VFX: jade serpent: head circle + 6 trailing circles following the head with a 3-frame delay each, gold whiskers lines, sparkle trail.
 
 **SP macros:** neutral → `jadePalm` HP; up → `bambooCounter` LK (high); back → `bambooCounter` HK (low); down → `rollingBun` HP if charged else `jadePalm` LP; double-SP → super.
 

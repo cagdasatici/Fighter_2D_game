@@ -238,7 +238,7 @@ export interface MoveDef {
   sfx: string;                // render side
   heal: number;               // super heal, default 0
   grab: { range: number; damage: number; throwVx: number; throwVy: number } | null; // command grabs
-  counter: { from: number; to: number; damage: number } | null; // parry stance
+  counter: { from: number; to: number; damage: number; levels: Level[] } | null; // parry stance; only strikes whose level is listed are countered
   gravityScale: number;       // % of GRAVITY while in this move, default 100
   lockOnHit: { hits: number; interval: number; damage: number; finalDamage: number; finalLaunch: { vx: number; vy: number } } | null; // supers that freeze positions after first hit (Bolt, Kaze)
 }
