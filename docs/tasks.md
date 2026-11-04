@@ -11,7 +11,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S0 | Repo scaffold + tooling | — | DONE | 9647c8d | docs/test-results/S0.md |
 | S1 | Fixed math, RNG, input bytes, history | S0 | TODO | | |
 | S2 | Motion parser | S1 | TODO | | |
-| S3 | Char data model + base normals + 5 char data files | S1 | TODO | | |
+| S3 | Char data model + base normals + 5 char data files | S1 | DONE (provisional values, see S3 notes) | HASH | docs/test-results/S3.md |
 | S4 | Sim core: state, movement, jumps, dashes, pushboxes | S2, S3 | TODO | | |
 | S5 | Attacks, hit/block resolution, combos, throws | S4 | TODO | | |
 | S6 | Projectiles, specials, special rules per char | S5 | TODO | | |
@@ -63,6 +63,10 @@ S12 can run in parallel with S8–S11 (different files).
 **Tests:** every char has the 13 base ids + 1 command normal + 3 specials (with variants) + 1 super; all ids unique per char; every `hits[].frames` lies within `[startup+1, startup+active]` (counter stances excepted); balance guardrails §9 rules 1, 3, 4, 5 (rule 2 after S7 once velocities exist—assert it here from data too).
 **STOP if:** a value in characters.md is missing for a field the type requires — list the gaps under S3 as BLOCKED.
 **Commit:** `S3: add character data model and roster frame data`
+**Notes (S3 session):** shipped with provisional values isolated in `chars/base.ts` / TODO comments; confirm or correct:
+- BLOCKED: missing `hitstun` on command normals, multi-hit specials, super hits and some projectiles — OK to use blockstun + 4?
+- BLOCKED: egg `lifetime` (used 120) and jadeDragon spawn `offset` (used 60,60)?
+- BLOCKED: bambooCounter LK/HK level filter has no field in `counter` — add `levels` to the type, or switch on id in S6?
 
 ## S4 — Sim core: movement
 **Files:** `packages/shared/src/sim/{types.ts,constants.ts,state.ts,step.ts,fighter.ts,physics.ts,checksum.ts}`, `tests/unit/sim-movement.test.ts`.
