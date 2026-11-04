@@ -10,7 +10,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 |---|---|---|---|---|---|
 | S0 | Repo scaffold + tooling | — | DONE | 9647c8d | docs/test-results/S0.md |
 | S1 | Fixed math, RNG, input bytes, history | S0 | DONE | c4cd25f | docs/test-results/S1.md |
-| S2 | Motion parser | S1 | DONE | (see S2 commit) | docs/test-results/S2.md |
+| S2 | Motion parser | S1 | DONE | a9bdd68 | docs/test-results/S2.md |
 | S3 | Char data model + base normals + 5 char data files | S1 | DONE (provisional values, see S3 notes) | 371f477 | docs/test-results/S3.md |
 | S4 | Sim core: state, movement, jumps, dashes, pushboxes | S2, S3 | TODO | | |
 | S5 | Attacks, hit/block resolution, combos, throws | S4 | TODO | | |
