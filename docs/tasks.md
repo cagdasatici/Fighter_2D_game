@@ -13,7 +13,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S2 | Motion parser | S1 | DONE | a9bdd68 | docs/test-results/S2.md |
 | S3 | Char data model + base normals + 5 char data files | S1 | DONE (provisional values, see S3 notes) | 371f477 | docs/test-results/S3.md |
 | S4 | Sim core: state, movement, jumps, dashes, pushboxes | S2, S3 | DONE | 76b3f62 | docs/test-results/S4.md |
-| S5 | Attacks, hit/block resolution, combos, throws | S4 | BLOCKED (code complete; 1 question) | | docs/test-results/S5.md |
+| S5 | Attacks, hit/block resolution, combos, throws | S4 | BLOCKED (code complete; 1 question) | 8496beb | docs/test-results/S5.md |
 | S6 | Projectiles, specials, special rules per char | S5 | TODO | | |
 | S7 | Supers, meter, round/match flow, balance guardrails, determinism suite | S6 | TODO | | |
 | S8 | Client shell: canvas, game loop, keyboard, local 2P with debug boxes | S7 | TODO | | |
