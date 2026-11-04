@@ -72,7 +72,7 @@ S12 can run in parallel with S8–S11 (different files).
 ## S4 — Sim core: movement
 **Files:** `packages/shared/src/sim/{types.ts,constants.ts,state.ts,step.ts,fighter.ts,physics.ts,checksum.ts}`, `tests/unit/sim-movement.test.ts`.
 **Steps:** spec §4, §7, §8 (only states idle/walk/crouch/jumpSquat/air/land/dash, facing, pushboxes, walls, gap clamp). `hits()`/`projectiles()`/`round()` are empty stubs calling nothing yet (except phase intro→fight after 120 frames). Test helper `tests/helpers/run.ts`: `runFrames(state, [[b0,b1], ...])` and `hold(b0, b1, n)`.
-**Tests:** walk speeds per char; jump apex height (Bolt: 1650²/(2·90) ≈ 15125 units ±200); jump duration; jumpSquat 4 frames; landing recovery 3; walls clamp; gap clamp 520 px; pushbox separation; cross-up side switch & facing update; dash distances; Kaze double jump only once; facing doesn't change mid-air.
+**Tests:** walk speeds per char; jump apex height (Bolt: 14310 units, the exact discrete sum of per-frame velocities; the continuous estimate 15125 does not apply); jump duration; jumpSquat 4 frames; landing recovery 3; walls clamp; gap clamp 520 px; pushbox separation; cross-up side switch & facing update; dash distances; Kaze double jump only once; facing doesn't change mid-air.
 **Commit:** `S4: add deterministic sim core with movement and pushboxes`
 
 ## S5 — Attacks, hits, blocks, throws
