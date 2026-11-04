@@ -9,7 +9,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | Slice | Title | Prereq | Status | Commit | Evidence |
 |---|---|---|---|---|---|
 | S0 | Repo scaffold + tooling | — | DONE | 9647c8d | docs/test-results/S0.md |
-| S1 | Fixed math, RNG, input bytes, history | S0 | TODO | | |
+| S1 | Fixed math, RNG, input bytes, history | S0 | DONE | c4cd25f | docs/test-results/S1.md |
 | S2 | Motion parser | S1 | TODO | | |
 | S3 | Char data model + base normals + 5 char data files | S1 | TODO | | |
 | S4 | Sim core: state, movement, jumps, dashes, pushboxes | S2, S3 | TODO | | |
