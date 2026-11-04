@@ -32,10 +32,10 @@ export const BAO: CharDef = {
       hits: [hit({ frames: [9, 38], box: box(-20, 0, 60, 60), damage: lh(v, 90, 110), chip: lh(v, 9, 11), knockdown: true })],
     })),
     ...pair((v) => move({
-      // LK = high counter (doesn't parry lows), HK = low counter (doesn't parry overheads): level filter lives in S6.
+      // LK = high counter (doesn't parry lows), HK = low counter (doesn't parry overheads).
       id: `bambooCounter.${v}`, kind: "special", name: "Bamboo Counter", input: { motion: "qcb", button: lh(v, "LK", "HK"), dir: null, stance: "stand" },
       startup: 3, active: 18, recovery: 22, pose: "counterStance",
-      counter: { from: 4, to: 21, damage: 130 },
+      counter: { from: 4, to: 21, damage: 130, levels: lh(v, ["mid", "overhead"], ["mid", "low"]) },
     })),
     move({
       id: "dragonDumpling", kind: "super", name: "Dragon Dumpling", input: { motion: "dqcf", button: "P", dir: null, stance: "stand" },

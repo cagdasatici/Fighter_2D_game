@@ -15,6 +15,7 @@ export function createFighter(char: CharId, x: number, facing: 1 | -1): Fighter 
     history: new Array<number>(INPUT_HISTORY).fill(0), historyHead: 0,
     buffered: 0, chargeBack: 0, chargeGrace: 0, lastPressFrame: 0,
     cancelOk: false, counterArmed: false, airJumps: 0, gravityScale: 100, wins: 0,
+    lockLeft: 0, lockTimer: 0, rehit: 0, spCount: 0,
   };
 }
 

@@ -1,6 +1,6 @@
 // Hit detection and resolution (spec §8.3). Integers only.
 import { CHARS } from "../chars/index.js";
-import type { Box, HitDef, MoveDef } from "../chars/types.js";
+import type { Box, HitDef, Level, MoveDef } from "../chars/types.js";
 import { PX, clamp, idiv } from "../fixed.js";
 import { numpad } from "../input/buttons.js";
 import { inputAt } from "../input/history.js";
@@ -12,13 +12,16 @@ import {
   THROW_HOLD_FRAMES, addMeter, curMove, pushStep, setState, techThrow, totalFrames,
 } from "./fighter.js";
 import { WALL_MAX, WALL_MIN } from "./physics.js";
+import { lockTick, onStrike, strikeBoxes, strikeHit, strikeReady } from "./specials.js";
 import type { Fighter, FxEvent, MatchState } from "./types.js";
 
 /** Throw lands the defender this far from the thrower (spec §8.3). */
 export const THROW_LAND_OFFSET = 8000;
 /** moveHitMask bit used on a throw/grab to remember "thrown backward" (throws have no hits[]). */
 const BACK_THROW_BIT = 2;
-const PARRY_HITSTOP = 10;
+export const PARRY_HITSTOP = 10;
+/** Command grabs (`grab`): victim held this long before the spit/damage frame (characters.md gulpGrab: 50-frame animation). */
+export const GRAB_HOLD_FRAMES = 50;
 
 export interface WorldBox { left: number; right: number; bottom: number; top: number }
 
@@ -46,7 +49,7 @@ export function scaledDamage(damage: number, comboHits: number): number {
   return d < 1 ? 1 : d;
 }
 
-function moveInvuln(f: Fighter, kinds: readonly string[]): boolean {
+export function moveInvuln(f: Fighter, kinds: readonly string[]): boolean {
   if (kinds.includes(f.invuln)) return true;
   const m = f.state === "attack" ? curMove(f) : null;
   return !!m && m.invuln.some((w) => kinds.includes(w.kind) && f.moveFrame >= w.from && f.moveFrame <= w.to);
@@ -56,12 +59,23 @@ const NO_BLOCK_STATES = ["attack", "hitstun", "jumpSquat", "dashF", "dashB", "ju
 
 /** Rule 4: grounded, allowed state, holding back away from the attacker; low needs 1, overhead needs 4. */
 export function blocks(d: Fighter, a: Fighter, h: HitDef): boolean {
+  return blocksFrom(d, a.x, h.level);
+}
+/** Blocking against a source at world x `srcX` (fighter or projectile). */
+export function blocksFrom(d: Fighter, srcX: number, level: Level): boolean {
   if (d.airborne || NO_BLOCK_STATES.includes(d.state)) return false;
-  const towardA = a.x > d.x ? 1 : a.x < d.x ? -1 : d.facing;
+  const towardA = srcX > d.x ? 1 : srcX < d.x ? -1 : d.facing;
   const dir = numpad(inputAt(d, 0), towardA);
-  if (h.level === "low") return dir === 1;
-  if (h.level === "overhead") return dir === 4;
+  if (level === "low") return dir === 1;
+  if (level === "overhead") return dir === 4;
   return dir === 1 || dir === 4;
+}
+
+/** Defender is in its counter stance window and the incoming level is countered (spec §8.3 rule 6, counter.levels). */
+export function parryWindow(d: Fighter, level: Level): boolean {
+  const dm = d.state === "attack" ? curMove(d) : null;
+  return !!(d.counterArmed && dm?.counter && d.moveFrame >= dm.counter.from && d.moveFrame <= dm.counter.to
+    && dm.counter.levels.includes(level));
 }
 
 interface Pending { k: number; h: HitDef; m: MoveDef; blocked: boolean; counter: boolean; parry: boolean }
@@ -73,15 +87,15 @@ function detect(s: MatchState, i: number): Pending | null {
   const m = curMove(a);
   if (!m || m.kind === "throw" || m.grab) return null;
   for (let k = 0; k < m.hits.length; k++) {
-    const h = m.hits[k]!;
-    if (a.moveFrame < h.frames[0] || a.moveFrame > h.frames[1] || (a.moveHitMask & (1 << k)) !== 0) continue;
+    const h = strikeHit(a, m, m.hits[k]!);
+    if (a.moveFrame < h.frames[0] || a.moveFrame > h.frames[1] || !strikeReady(a, m, k)) continue;
     if (d.state === "knockdown" || d.state === "getup" || d.state === "ko") return null;
     if (moveInvuln(d, ["full", "strike"])) return null;
     if (d.state === "juggle" && h.launch === null) return null; // juggle limit
-    const hb = worldBox(a, h.box);
-    if (!hurtboxes(d).some((hu) => overlaps(hb, hu))) return null;
+    const hbs = strikeBoxes(a, m, h);
+    if (!hurtboxes(d).some((hu) => hbs.some((hb) => overlaps(hb, hu)))) return null;
     const dm = d.state === "attack" ? curMove(d) : null;
-    const parry = !!(d.counterArmed && dm?.counter && d.moveFrame >= dm.counter.from && d.moveFrame <= dm.counter.to);
+    const parry = parryWindow(d, h.level);
     const blocked = !parry && blocks(d, a, h);
     const counter = !parry && !blocked && !!dm && d.moveFrame <= dm.startup;
     return { k, h, m, blocked, counter, parry };
@@ -89,21 +103,35 @@ function detect(s: MatchState, i: number): Pending | null {
   return null;
 }
 
-function event(s: MatchState, kind: FxEvent["kind"], by: 0 | 1, d: Fighter, strength: 0 | 1 | 2): void {
+export function event(s: MatchState, kind: FxEvent["kind"], by: 0 | 1, d: Fighter, strength: 0 | 1 | 2): void {
   s.events.push({ frame: s.frame, kind, x: d.x, y: d.y + 60 * PX, strength, by });
 }
 
 function setPushback(a: Fighter, d: Fighter, amount: number): void {
-  const side = d.x > a.x ? 1 : d.x < a.x ? -1 : a.facing;
+  setPushbackDir(d, d.x > a.x ? 1 : d.x < a.x ? -1 : a.facing, amount);
+}
+export function setPushbackDir(d: Fighter, side: number, amount: number): void {
   d.pushRemain = side * amount; d.pushPerFrame = pushStep(d.pushRemain);
 }
 
-function toJuggle(f: Fighter, vx: number, vy: number): void {
+/** lockOnHit follow-up damage: unscaled (super totals in characters.md are unscaled), counts as a combo hit. */
+export function addLockHit(d: Fighter, dmg: number): void {
+  d.hp -= dmg; if (d.hp < 0) d.hp = 0;
+  d.comboHits++;
+  addMeter(d, idiv(dmg * METER_DEFENDER_PERCENT, 100));
+}
+
+export function toJuggle(f: Fighter, vx: number, vy: number): void {
   f.state = "juggle"; f.stateFrame = 1; f.move = null; f.moveFrame = 0; f.cancelOk = false; f.counterArmed = false;
-  f.airborne = true; f.vx = vx; f.vy = vy; f.stun = 0; f.pushRemain = 0; f.pushPerFrame = 0;
+  f.airborne = true; f.vx = vx; f.vy = vy; f.stun = 0; f.pushRemain = 0; f.pushPerFrame = 0; f.lockLeft = 0;
 }
 
 function apply(s: MatchState, i: 0 | 1, p: Pending): void {
+  applyContact(s, i, p);
+  if (!p.parry) onStrike(s.fighters[i], s.fighters[1 - i]!, p.m, p.blocked);
+}
+
+function applyContact(s: MatchState, i: 0 | 1, p: Pending): void {
   const a = s.fighters[i], d = s.fighters[1 - i]!;
   const { h, m } = p;
   a.moveHitMask |= 1 << p.k;
@@ -120,7 +148,7 @@ function apply(s: MatchState, i: 0 | 1, p: Pending): void {
   d.hitstop = d.hitstop > stop ? d.hitstop : stop;
   if (m.cancelInto.length > 0) a.cancelOk = true;
   const strength: 0 | 1 = stop >= 11 ? 1 : 0;
-  d.move = null; d.moveFrame = 0; d.cancelOk = false; d.counterArmed = false; d.vx = 0;
+  d.move = null; d.moveFrame = 0; d.cancelOk = false; d.counterArmed = false; d.vx = 0; d.lockLeft = 0;
   if (p.blocked) {
     let hp = d.hp - h.chip;
     if (!CHIP_KO_ALLOWED && hp < 1) hp = d.hp < 1 ? d.hp : 1;
@@ -188,17 +216,18 @@ function grabFinish(s: MatchState, i: 0 | 1): void {
     d.state = "knockdown"; d.stateFrame = 1; d.stun = KNOCKDOWN_FRAMES; d.invuln = "full"; d.invulnFrames = KNOCKDOWN_FRAMES + 1;
     d.move = null;
   }
-  // TODO(S6): gulpGrab-specific sequence may keep the attacker in its move; here the thrower recovers at once.
   a.move = null; a.moveFrame = 0; a.moveHitMask = 0; setState(a, "idle");
   event(s, "throw", i, d, 2);
 }
 
 /** Spec §8 `hits(s)`: throws first (a thrown fighter's strike is dropped), then strikes evaluated together (trades). */
 export function hits(s: MatchState): void {
+  lockTick(s);
   const [f0, f1] = s.fighters;
   for (const i of [0, 1] as const) {
     const a = s.fighters[i], d = s.fighters[1 - i]!;
-    if (a.state === "throwing" && d.state === "thrown" && d.stateFrame >= THROW_HOLD_FRAMES) grabFinish(s, i);
+    const hold = curMove(a)?.grab ? GRAB_HOLD_FRAMES : THROW_HOLD_FRAMES;
+    if (a.state === "throwing" && d.state === "thrown" && d.stateFrame >= hold) grabFinish(s, i);
   }
   const t0 = throwConnects(s, 0), t1 = throwConnects(s, 1);
   if (t0 && t1) { techThrow(f0, f1); event(s, "throw", 0, f1, 0); return; }

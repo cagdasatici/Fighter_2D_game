@@ -5,6 +5,8 @@ import { ROUND_INTRO_FRAMES } from "./constants.js";
 import { BUTTON_BUFFER, afterPhysics, stateMachine, updateFacing } from "./fighter.js";
 import { hits, pushback } from "./hit.js";
 import { physics, pushboxes } from "./physics.js";
+import { ownedBy, projectiles } from "./projectile.js";
+import { moveTick } from "./specials.js";
 import type { MatchState } from "./types.js";
 
 /** Advance one frame (spec §8). The only function that mutates sim state over time. */
@@ -29,10 +31,11 @@ export function step(s: MatchState, inputs: [InputByte, InputByte]): void {
     const f = s.fighters[i]!, opp = s.fighters[1 - i]!;
     if (f.hitstop > 0) { f.hitstop--; continue; }
     updateFacing(f, opp);
-    stateMachine(f, opp, live ? cleanSocd(inputs[i]!) : 0);
+    stateMachine(f, opp, live ? cleanSocd(inputs[i]!) : 0, ownedBy(s, i));
     const wasAir = f.airborne;
     physics(f);
     afterPhysics(f, wasAir);
+    moveTick(s, i as 0 | 1);
   }
   pushboxes(s, prevX, [wasAir[0] && !a.airborne, wasAir[1] && !b.airborne]);
   projectiles(s);
@@ -41,8 +44,7 @@ export function step(s: MatchState, inputs: [InputByte, InputByte]): void {
   round(s);
 }
 
-// TODO(S6): projectiles. TODO(S7): timer, KO, round flow.
-function projectiles(_s: MatchState): void { /* S6 */ }
+// TODO(S7): timer, KO, round flow.
 function round(s: MatchState): void {
   if (s.phase === "intro") {
     s.phaseFrame++;
