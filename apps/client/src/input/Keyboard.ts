@@ -14,6 +14,8 @@ export function buildMaps(keys: readonly [KeyMap, KeyMap]): [Record<string, numb
 
 export class Keyboard implements InputSource {
   private readonly held = new Set<string>();
+  /** S15: keys pressed since the last read, so a tap released before the next tick still counts for one frame. */
+  private readonly tapped = new Set<string>();
   private maps: [Record<string, number>, Record<string, number>];
   constructor(keys: readonly [KeyMap, KeyMap], private readonly toggleDebug: () => void, private readonly onPause: () => void = () => {}) {
     this.maps = buildMaps(keys);
@@ -32,18 +34,21 @@ export class Keyboard implements InputSource {
     if (e.code === 'Escape') { if (!e.repeat) this.onPause(); return; }
     if (this.maps.some(map => map[e.code] !== undefined)) {
       if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement)) e.preventDefault();
-      this.held.add(e.code);
+      this.held.add(e.code); this.tapped.add(e.code);
     }
   };
   private up = (e: KeyboardEvent): void => { this.held.delete(e.code); };
-  private clear = (): void => { this.held.clear(); };
+  private clear = (): void => { this.held.clear(); this.tapped.clear(); };
   read(): [number, number] {
     const read = (map: Record<string, number>): number => {
       let byte = 0;
       for (const code of this.held) byte |= map[code] ?? 0;
+      for (const code of this.tapped) byte |= map[code] ?? 0;
       return cleanSocd(byte);
     };
-    return [read(this.maps[0]), read(this.maps[1])];
+    const out: [number, number] = [read(this.maps[0]), read(this.maps[1])];
+    this.tapped.clear();
+    return out;
   }
   dispose(): void {
     window.removeEventListener('keydown', this.down);
