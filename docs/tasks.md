@@ -16,7 +16,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S5 | Attacks, hit/block resolution, combos, throws | S4 | DONE | 8496beb | docs/test-results/S5.md |
 | S6 | Projectiles, specials, special rules per char | S5 | DONE (data findings, see S6 notes) | bf79207 | docs/test-results/S6.md |
 | S7 | Supers, meter, round/match flow, balance guardrails, determinism suite | S6 | DONE (liveWireHop resolved by decision 0004) | 779d930 | docs/test-results/S7.md |
-| S8 | Client shell: canvas, game loop, keyboard, local 2P with debug boxes | S7 | TODO | | |
+| S8 | Client shell: canvas, game loop, keyboard, local 2P with debug boxes | S7 | DONE (browser verified; physical keyboard check NOT RUN) | pending | docs/test-results/S8.md |
 | S9 | Puppet renderer + 5 skins + pose library | S8 | TODO | | |
 | S10 | FX, HUD, stages, audio | S9 | TODO | | |
 | S11 | Menus, char select, Versus CPU, Training, CPU AI | S10 | TODO | | |
