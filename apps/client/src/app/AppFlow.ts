@@ -20,6 +20,11 @@ import { drawResults, showResults } from '../ui/Results.js';
 import { loadSettings, showSettings, type Settings } from '../ui/Settings.js';
 import { showTitle } from '../ui/Title.js';
 import { VS_FRAMES, drawVs, showVs } from '../ui/VsScreen.js';
+import { showOnlineLobby, showRoomPanel, type RoomPanel } from '../ui/Lobby.js';
+import { ClientError, RoomClient } from '../net/RoomClient.js';
+import { ClockSync } from '../net/ClockSync.js';
+import { Rollback } from '../net/Rollback.js';
+import type { ServerMsg } from '@kb/shared/net/protocol';
 import '../ui/experience.css';
 
 declare global {
@@ -48,6 +53,8 @@ export class AppFlow {
   private stage: StageId = 'rooftop';
   private cpu: CpuState | null = null;
   private seedCounter = 1;
+  /** Online session (S13): room client, clock and rollback driver. Null offline. */
+  private net: { client: RoomClient; clock: ClockSync; rb: Rollback | null; panel: RoomPanel | null; offs: (() => void)[]; ping: number | null } | null = null;
   private readonly training: TrainingOptions = { dummy: 'stand', infiniteHp: true, infiniteMeter: false };
   private readonly advantage = new AdvantageMeter();
   private boxes: boolean;
@@ -100,6 +107,7 @@ export class AppFlow {
     this.show(root => showTitle(root, c => {
       if (c === 'settings') this.show(r => showSettings(r, this.settings, () => this.applySettings(), () => this.toTitle()));
       else if (c === 'howto') this.show(r => showHowToPlay(r, this.settings.keys[0], () => this.toTitle()));
+      else if (c === 'online') this.toOnline();
       else if (c === 'cpu' || c === 'local' || c === 'training') { this.mode = c; this.toSelect(); }
     }));
   }
@@ -122,8 +130,106 @@ export class AppFlow {
       if (c === 'rematch') { this.startMatch(); this.toVs(); } else if (c === 'select') this.toSelect(); else this.toTitle();
     }));
   }
+  // ---- online (spec §11.4, §15) ----
+  private onlineClient(): NonNullable<AppFlow['net']> {
+    if (this.net) return this.net;
+    const ws = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`;
+    const client = new RoomClient({ httpBase: '', wsEndpoint: ws });
+    this.net = { client, clock: new ClockSync(), rb: null, panel: null, offs: [], ping: null };
+    return this.net;
+  }
+  private toOnline(): void {
+    this.scene = 'menu'; this.audio.setStage(null);
+    const net = this.onlineClient();
+    this.show(root => showOnlineLobby(root, {
+      list: () => net.client.listRooms(),
+      join: async code => { await net.client.join(code); this.toRoom(); },
+      login: (invite, name) => net.client.login(invite, name),
+      openLogin: name => net.client.openLogin(name),
+      back: () => { this.leaveOnline(); this.toTitle(); },
+    }));
+  }
+  private toRoom(): void {
+    const net = this.net;
+    if (!net) return;
+    this.scene = 'menu';
+    net.offs.push(net.client.onMessage(m => this.onServer(m)));
+    net.offs.push(net.client.onClose(() => { if (this.net === net) { this.leaveOnline(); this.toTitle(); } }));
+    // Clock pings once per second while seated (cleared in leaveOnline).
+    const ping = (): void => {
+      const n = net.clock.makePing(Date.now());
+      net.client.serverTime().then(ms => { net.clock.onPong(n, ms, Date.now()); }, (e: unknown) => { if (!(e instanceof ClientError)) throw e; });
+    };
+    ping(); net.ping = window.setInterval(ping, 1000);
+    this.showRoomPanel();
+  }
+  private showRoomPanel(): void {
+    const net = this.net;
+    if (!net) return;
+    this.show(root => {
+      net.panel = showRoomPanel(root, this.chars[0], {
+        pick: c => { this.chars = [c, this.chars[1]]; net.client.send({ t: 'pick', char: c }); },
+        ready: () => net.client.send({ t: 'ready' }),
+        addCpu: c => net.client.send({ t: 'bot', char: c, difficulty: this.settings.difficulty }),
+        leave: () => { this.leaveOnline(); this.toOnline(); },
+      });
+      return () => { net.panel?.close(); net.panel = null; };
+    });
+  }
+  private onServer(m: ServerMsg): void {
+    const net = this.net;
+    if (!net) return;
+    if (m.t === 'lobby') { net.panel?.update(m); return; }
+    if (m.t === 'start') {
+      net.rb = new Rollback(m, msg => net.client.send(msg));
+      this.mode = 'cpu'; this.chars = m.chars; this.stage = m.stage;
+      this.state = net.rb.current; this.previous = cloneState(this.state); this.cpu = null;
+      this.fx = this.newFx(); this.hud = new Hud(this.state); this.camera.update(this.state);
+      this.toVs();
+      return;
+    }
+    net.rb?.onMessage(m);
+  }
+  private leaveOnline(): void {
+    const net = this.net;
+    if (!net) return;
+    this.net = null;
+    for (const off of net.offs) off();
+    if (net.ping !== null) window.clearInterval(net.ping);
+    net.client.dispose();
+  }
+  /** One online tick: rollback advance toward the server-clock target, then FX/SFX for newly shown frames only. */
+  private tickOnline(rb: Rollback, clock: ClockSync): void {
+    clock.frame();
+    const before = this.state.frame;
+    const prev = cloneState(this.state);
+    rb.tick(clock.serverMs(Date.now()), clock.rttMs, () => this.keyboard.read()[0]);
+    this.state = rb.current;
+    if (this.state.frame !== before) this.previous = prev;
+    const events = rb.takeEvents();
+    if (events.length > 0 || this.state.frame !== before) {
+      const shown: MatchState = { ...this.state, events };
+      if (shown.frame !== this.fx.lastFxFrame) for (const c of cuesForFrame(prev, shown)) this.audio.play(c.kind, c.priority, 0);
+      this.fx.consume(shown);
+    }
+    this.camera.update(this.state); this.fx.update(); this.hud.update(this.state);
+    this.audio.setStage(this.state.phase === 'matchEnd' ? null : this.state.stage);
+    if (rb.ended && ++this.sceneFrame >= 90) {
+      this.state = { ...this.state, winner: rb.ended.winner };
+      this.toResultsOnline();
+    }
+  }
+  private toResultsOnline(): void {
+    this.scene = 'results'; this.sceneFrame = 0; this.audio.setStage(null);
+    this.show(root => showResults(root, this.state, null, c => {
+      if (c === 'rematch') this.net?.client.send({ t: 'rematch' });
+      else if (c === 'select') { this.leaveOnline(); this.toOnline(); }
+      else { this.leaveOnline(); this.toTitle(); }
+    }));
+  }
+
   private togglePause(): void {
-    if (this.scene !== 'fight') return;
+    if (this.scene !== 'fight' || this.net?.rb) return; // online has no pause
     if (this.paused) { this.paused = false; this.hideUi(); return; }
     this.paused = true;
     this.show(root => showPause(root, this.mode === 'training' ? this.training : null, c => {
@@ -144,6 +250,12 @@ export class AppFlow {
   }
 
   private tick(): void {
+    const rb = this.net?.rb;
+    if (rb && this.net) {
+      if (this.scene === 'vs' && ++this.sceneFrame >= VS_FRAMES) this.enterFight();
+      if (this.scene === 'vs' || this.scene === 'fight') this.tickOnline(rb, this.net.clock);
+      return;
+    }
     if (this.scene === 'vs') { if (++this.sceneFrame >= VS_FRAMES) this.enterFight(); return; }
     if (this.scene !== 'fight') { this.sceneFrame++; return; }
     if (this.paused) return;
@@ -179,6 +291,10 @@ export class AppFlow {
       const text = `ADV ${advantageText(this.advantage.last)}`;
       ctx.strokeText(text, 12, HEIGHT - 12); ctx.fillText(text, 12, HEIGHT - 12);
     }
+    if (import.meta.env.DEV && this.net?.rb) {
+      ctx.font = 'bold 12px system-ui'; ctx.textAlign = 'right'; ctx.fillStyle = '#ffffff';
+      ctx.fillText(`RTT ${Math.round(this.net.clock.rttMs)} ms${this.net.rb.stalled ? ' STALL' : ''}`, WIDTH - 8, HEIGHT - 8);
+    }
   }
   private removeGestureListeners(): void {
     window.removeEventListener('pointerdown', this.unlockAudio);
@@ -209,6 +325,7 @@ export class AppFlow {
     this.hud.draw(ctx, s);
   }
   dispose(): void {
+    this.leaveOnline();
     this.loop.dispose(); this.keyboard.dispose(); this.canvas.dispose();
     this.hideUi(); this.ui.remove();
     this.removeGestureListeners();

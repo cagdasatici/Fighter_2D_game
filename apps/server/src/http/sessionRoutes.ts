@@ -108,6 +108,9 @@ export function registerSessionRoutes(app: HttpApp, svc: AuthServices, now: () =
     send(res, 200, body);
   });
 
+  // Decision 0009: wall-clock probe for the client's ClockSync (rollback target frame). No state, no secrets.
+  app.get("/api/time", (_req, res) => send(res, 200, { serverMs: now() }));
+
   app.post("/api/session", async (req, res) => {
     if (!originAllowed(req, config.allowedOrigins)) return send(res, 403, { error: "ORIGIN" });
     if (!sessionLimiter.allow(clientKey(req)) || !globalSessionLimiter.allow("*")) return send(res, 429, { error: "RATE_LIMITED" });

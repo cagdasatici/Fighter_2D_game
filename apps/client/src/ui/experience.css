@@ -49,3 +49,9 @@
 @keyframes kb-slide-l { from { transform: translateX(-60vw); } to { transform: none; } }
 @keyframes kb-slide-r { from { transform: translateX(60vw); } to { transform: none; } }
 .kb-results, .kb-pause { text-align: center; }
+/* S13 online lobby */
+.kb-rooms { list-style: none; padding: 0; margin: 12px 0; }
+.kb-rooms li, .kb-slot { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin: 8px 0; }
+.kb-picks { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.kb-btn.kb-on { outline: 3px solid #4da3ff; }
+.kb-field { min-height: 44px; font: inherit; padding: 6px 10px; border-radius: 8px; }
