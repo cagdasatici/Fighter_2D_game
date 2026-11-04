@@ -20,7 +20,8 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S9 | Puppet renderer + 5 skins + pose library | S8 | TODO | | |
 | S10 | FX, HUD, stages, audio | S9 | TODO | | |
 | S11 | Menus, char select, Versus CPU, Training, CPU AI | S10 | TODO | | |
-| S12 | Server: copied infra + FightRoom input authority | S7 | TODO | | |
+| S12a | Server infra copy + FightRoom placeholder (no sim) | S0 | DONE | (this commit) | docs/test-results/S12a.md |
+| S12 | Server: copied infra + FightRoom input authority (remaining: S12b) | S7 | TODO | | |
 | S13 | Client rollback netcode + online flow | S11, S12 | TODO | | |
 | S14 | Touch controls + gamepad + iPad PWA + play script | S13 | TODO | | |
 | S15 | Browser tests, polish pass, release checklist | S14 | TODO | | |
