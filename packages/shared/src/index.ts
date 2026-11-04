@@ -6,3 +6,4 @@ export * from "./input/history.js";
 export * from "./chars/index.js";
 export * from "./input/motion.js";
 export * from "./sim/constants.js"; export * from "./sim/types.js"; export * from "./sim/state.js"; export * from "./sim/step.js"; export * from "./sim/checksum.js";
+export * from "./ai/cpu.js";
