@@ -15,7 +15,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S4 | Sim core: state, movement, jumps, dashes, pushboxes | S2, S3 | DONE | 76b3f62 | docs/test-results/S4.md |
 | S5 | Attacks, hit/block resolution, combos, throws | S4 | DONE | 8496beb | docs/test-results/S5.md |
 | S6 | Projectiles, specials, special rules per char | S5 | DONE (data findings, see S6 notes) | bf79207 | docs/test-results/S6.md |
-| S7 | Supers, meter, round/match flow, balance guardrails, determinism suite | S6 | DONE (1 BLOCKED sub-item: liveWireHop airborne total) | (see git log: S7 commit) | docs/test-results/S7.md |
+| S7 | Supers, meter, round/match flow, balance guardrails, determinism suite | S6 | DONE (1 BLOCKED sub-item: liveWireHop airborne total) | 779d930 | docs/test-results/S7.md |
 | S8 | Client shell: canvas, game loop, keyboard, local 2P with debug boxes | S7 | TODO | | |
 | S9 | Puppet renderer + 5 skins + pose library | S8 | TODO | | |
 | S10 | FX, HUD, stages, audio | S9 | TODO | | |
