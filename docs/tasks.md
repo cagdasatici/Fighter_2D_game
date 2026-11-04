@@ -19,7 +19,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S8 | Client shell: canvas, game loop, keyboard, local 2P with debug boxes | S7 | DONE (browser verified; physical keyboard check NOT RUN) | 940b07a | docs/test-results/S8.md |
 | S9 | Puppet renderer + 5 skins + pose library | S8 | DONE (art approved as placeholder 2026-11-04; polish later) | ac2f52f | docs/test-results/S9.md |
 | S10 | FX, HUD, stages + audio integration | S9, S10a | DONE (audio wiring moved to S10a, decision 0005) | b41c2cb | docs/test-results/S10.md |
-| S10a | Standalone synthesized audio + stage music | S0 | DONE (decision 0006) | PENDING | docs/test-results/S10a.md |
+| S10a | Standalone synthesized audio + stage music | S0 | DONE (decision 0006) | a8ca537 | docs/test-results/S10a.md |
 | S11 | Menus, char select, Versus CPU, Training, CPU AI | S10 | TODO | | |
 | S12a | Server infra copy + FightRoom placeholder (no sim) | S0 | DONE | 5f40b10 | docs/test-results/S12a.md |
 | S12 | Server infrastructure + two-human input authority (S12a + S12b) | S7 | DONE | aacf6a7 | docs/test-results/S12b.md |
