@@ -73,12 +73,13 @@ describe("S6 Bao specials", () => {
     runFrames(c, hold(0, 0, 10));
     expect(p1(c).hp).toBe(1100);
   });
-  it("jadeDragon hits every 4 frames; vs a grounded opponent only 4 of 5 connect (data finding, S6.md)", () => {
+  it("jadeDragon freezes during its hitstop (decision 0003): all 5 hits connect, hitstop 11 + interval 4 apart, 250 total", () => {
     const s = at(150, "bao");
     begin(s, 0, "dragonDumpling");
     const at_: number[] = [];
     for (let n = 0; n < 100; n++) { runFrames(s, [[0, 0]]); if (s.events.some((e) => e.kind === "hit")) at_.push(s.frame); }
-    expect(at_.map((f) => f - at_[0]!)).toEqual([0, 4, 8, 12]);
+    expect(at_.map((f) => f - at_[0]!)).toEqual([0, 15, 30, 45, 60]);
+    expect(1000 - p2(s).hp).toBe(250); // fresh super: unscaled (decision 0003)
   });
   it("a knockdown projectile knocks down only on its last hit", () => {
     const s = at(200, "bao");

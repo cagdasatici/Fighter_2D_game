@@ -33,6 +33,7 @@ export interface Fighter {
   lockTimer: number;                               // frames until the next lock hit
   rehit: number;                                   // stampedeRoll: frames until the box may hit again
   spCount: number;                                 // stampedeRoll: contacts so far
+  superScale: number;                              // S7: % scale fixed by the current super's first hit (0 = not yet)
 }
 export interface Projectile {
   owner: 0 | 1; kind: string; x: number; y: number; vx: number; vy: number; gravity: number;

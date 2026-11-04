@@ -120,18 +120,18 @@ export function lockTick(s: MatchState): void {
     const a = s.fighters[i], d = s.fighters[1 - i]!;
     if (a.lockLeft === 0) continue;
     const m = a.state === "attack" ? curMove(a) : null;
-    if (!m?.lockOnHit) { a.lockLeft = 0; continue; }
+    if (!m?.lockOnHit || d.state === "ko") { a.lockLeft = 0; continue; } // a KO ends the lock (spec §10)
     if (a.hitstop > 0) continue;
     a.vx = 0; d.vx = 0; d.pushRemain = 0; d.pushPerFrame = 0;
     if (--a.lockTimer > 0) continue;
     const L = m.lockOnHit;
     if (a.lockLeft > 1) {
-      addLockHit(d, L.damage);
+      addLockHit(a, d, L.damage);
       d.state = "hitstun"; d.stateFrame = 1; d.stun = L.interval + 1;
       a.lockLeft--; a.lockTimer = L.interval;
       event(s, "hit", i, d, 1);
     } else {
-      addLockHit(d, L.finalDamage);
+      addLockHit(a, d, L.finalDamage);
       toJuggle(d, L.finalLaunch.vx * a.facing, L.finalLaunch.vy);
       a.lockLeft = 0; endActive(a, m);
       event(s, "hit", i, d, 2);

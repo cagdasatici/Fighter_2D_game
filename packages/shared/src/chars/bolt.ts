@@ -33,7 +33,7 @@ export const BOLT: CharDef = {
       startup: 14, active: 6, recovery: 16, landingRecovery: 6, pose: "jumpTuck",
       velocities: [{ frame: 1, vx: lh(v, 300, 500), vy: 1400 }], airborneFrames: [1, 36],
       // KD on air hit only: handled by sim juggle rules (knockdown false here).
-      hits: [hit({ frames: [15, 20], box: box(-10, -10, 50, 30), damage: 90, chip: 10, hitstun: 20, blockstun: 14, level: "overhead" })],
+      hits: [hit({ frames: [15, 20], box: box(0, -40, 55, 50), damage: 90, chip: 10, hitstun: 20, blockstun: 14, level: "overhead" })],
     })),
     move({
       id: "demolitionDrive", kind: "super", name: "Demolition Drive", input: { motion: "dqcf", button: "P", dir: null, stance: "stand" },

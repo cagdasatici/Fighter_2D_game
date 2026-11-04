@@ -7,7 +7,7 @@ import { chargeReady, detectMotion, MOTION_WINDOW, resolveRequest, type MotionId
 import {
   AIR_JUMP_MIN_VY, AIR_JUMP_VX_PERCENT, AIR_JUMP_VY, DASH_WINDOW, GETUP_FRAMES, JUMP_SQUAT,
   KNOCKDOWN_FRAMES, LANDING_RECOVERY, LANDING_RECOVERY_ATTACK, METER_MAX, METER_ON_WHIFF_SPECIAL,
-  THROW_TECH_WINDOW,
+  SUPER_COST, THROW_TECH_WINDOW,
 } from "./constants.js";
 import { PROJECTILE_LIMIT_PER_PLAYER } from "./constants.js";
 import { resetSpecial } from "./specials.js";
@@ -99,14 +99,19 @@ function motionHeld(f: Fighter, m: "charge" | MotionId): boolean {
 export function requestMove(f: Fighter, allow: MoveFilter, ownProjectiles = 0): MoveDef | null {
   const moves = CHARS[f.char].moves;
   const dir = numpad(inputAt(f, 0), f.facing);
-  // 1. Specials (buffered button). TODO(S7): supers (meter cost + freeze) are not started yet.
-  // Projectile limit (spec §8.1): a projectile special is refused while the fighter owns PROJECTILE_LIMIT_PER_PLAYER.
+  // 1. Supers and specials (buffered button). Supers need meter >= SUPER_COST (spec §8.1).
+  // Projectile limit (spec §8.1): a projectile special is refused while the fighter owns PROJECTILE_LIMIT_PER_PLAYER;
+  // supers are not gated by it.
   if (f.buffered > 0) {
     for (const mo of motionOrder(f)) {
       if (!motionHeld(f, mo)) continue;
       for (const m of moves) {
-        if (m.kind !== "special" || m.input.motion !== mo) continue;
+        if ((m.kind !== "special" && m.kind !== "super") || m.input.motion !== mo) continue;
         if ((m.input.stance === "air") !== f.airborne) continue;
+        if (m.kind === "super") {
+          if (f.meter >= SUPER_COST && pressedWithin(f, BUTTON_MASK[m.input.button], BUTTON_BUFFER) && allow(m)) return m;
+          continue;
+        }
         if (!pressedWithin(f, BUTTON_MASK[m.input.button], BUTTON_BUFFER) || !allow(m)) continue;
         if (m.projectile && ownProjectiles >= PROJECTILE_LIMIT_PER_PLAYER) continue;
         return m;
@@ -137,7 +142,7 @@ export function requestMove(f: Fighter, allow: MoveFilter, ownProjectiles = 0): 
 function applyVelocities(f: Fighter, m: MoveDef): void {
   for (const v of m.velocities) {
     if (v.frame !== f.moveFrame) continue;
-    f.vx = v.vx * f.facing;
+    f.vx = v.vx * f.facing + 0; // + 0: no -0 in state (spec §16 c)
     if (v.vy !== null) { f.vy = v.vy; if (v.vy > 0) f.airborne = true; }
   }
 }
@@ -152,6 +157,9 @@ export function startMove(f: Fighter, m: MoveDef): void {
   resetSpecial(f);
   // Spec §8.1: specials grant METER_ON_WHIFF_SPECIAL at frame 1.
   if (m.kind === "special") addMeter(f, METER_ON_WHIFF_SPECIAL);
+  // Supers pay SUPER_COST at frame 1 and fix their combo scale on the first hit (decision 0003).
+  // The freeze itself is set by step() (it owns MatchState), see superStarted().
+  if (m.kind === "super") { f.meter -= SUPER_COST; f.superScale = 0; }
   applyVelocities(f, m);
 }
 
@@ -160,16 +168,16 @@ function enterIdle(f: Fighter): void {
   f.stun = 0; f.comboHits = 0; // spec §8.3 rule 7
 }
 
-function actionable(f: Fighter, input: InputByte, np: number): void {
+function actionable(f: Fighter, input: InputByte, np: number, live = true): void {
   enterIdle(f);
-  const req = requestMove(f, () => true, np);
+  const req = live ? requestMove(f, () => true, np) : null;
   if (req) { startMove(f, req); return; }
   const c = CHARS[f.char];
   const dir = numpad(input, f.facing);
   f.crouching = false;
   if (dir >= 7) { setState(f, "jumpSquat"); f.vx = 0; return; }
-  if (dashInput(f, 6)) { setState(f, "dashF"); f.vx = c.dashFwd.speed * f.facing; return; }
-  if (dashInput(f, 4)) {
+  if (live && dashInput(f, 6)) { setState(f, "dashF"); f.vx = c.dashFwd.speed * f.facing; return; }
+  if (live && dashInput(f, 4)) {
     setState(f, "dashB"); f.vx = -c.dashBack.speed * f.facing;
     f.invuln = "strike"; f.invulnFrames = c.dashBack.invuln; return;
   }
@@ -182,6 +190,7 @@ function actionable(f: Fighter, input: InputByte, np: number): void {
 /** Cancel filter (spec §8.1): specials if the move lists "special", chain = same-button normal. */
 function cancelFilter(cur: MoveDef): MoveFilter {
   return (m) => (m.kind === "special" && cur.cancelInto.includes("special"))
+    || (m.kind === "super" && cur.cancelInto.includes("super"))
     || (m.kind === "normal" && cur.cancelInto.includes("chain") && m.input.button === cur.input.button);
 }
 
@@ -201,8 +210,11 @@ export function pushStep(total: number): number {
 }
 
 /** Step B (spec §8.1). */
-/** `np` = projectiles this fighter currently owns (projectile limit). */
-export function stateMachine(f: Fighter, opp: Fighter, input: InputByte, np = 0): void {
+/**
+ * `np` = projectiles this fighter currently owns (projectile limit). `live` = false outside the fight phase
+ * (spec §10: inputs ignored): no move requests, dashes, air jumps or techs are read from the input history.
+ */
+export function stateMachine(f: Fighter, opp: Fighter, input: InputByte, np = 0, live = true): void {
   const c = CHARS[f.char];
   f.stateFrame++;
   f.gravityScale = 100;
@@ -210,7 +222,7 @@ export function stateMachine(f: Fighter, opp: Fighter, input: InputByte, np = 0)
   switch (f.state) {
     case "jumpSquat": {
       // Spec §5.3: a 360 grab may be input during jumpSquat frames 1-2 and cancels the jump.
-      if (f.stateFrame <= 2) {
+      if (live && f.stateFrame <= 2) {
         const g = requestMove(f, (m) => m.input.motion === "spin", np);
         if (g) { startMove(f, g); return; }
       }
@@ -218,41 +230,41 @@ export function stateMachine(f: Fighter, opp: Fighter, input: InputByte, np = 0)
       // Direction comes from the frame the jump was input (JUMP_SQUAT frames ago).
       const h = horiz(numpad(inputAt(f, JUMP_SQUAT), f.facing));
       setState(f, "air");
-      f.airborne = true; f.vy = c.jumpVy; f.vx = h * c.jumpVx * f.facing;
+      f.airborne = true; f.vy = c.jumpVy; f.vx = h * c.jumpVx * f.facing + 0;
       return;
     }
     case "air": {
       // `move` stays set after an air normal ends: one air attack per jump (spec §8.1).
-      if (f.move === null) {
+      if (live && f.move === null) {
         const req = requestMove(f, (m) => m.kind === "normal" || (m.kind === "special" && m.input.stance === "air"), np);
         if (req) { startMove(f, req); return; }
       }
       const up = (inputAt(f, 0) & UP) !== 0 && (inputAt(f, 1) & UP) === 0;
-      if (up && f.airJumps < c.airJumpMax && f.vy < AIR_JUMP_MIN_VY) {
+      if (live && up && f.airJumps < c.airJumpMax && f.vy < AIR_JUMP_MIN_VY) {
         const h = horiz(numpad(input, f.facing));
         f.airJumps++;
         f.vy = AIR_JUMP_VY;
-        f.vx = h * idiv(c.jumpVx * AIR_JUMP_VX_PERCENT, 100) * f.facing;
+        f.vx = h * idiv(c.jumpVx * AIR_JUMP_VX_PERCENT, 100) * f.facing + 0;
       }
       return;
     }
     case "attack": {
       const m = curMove(f);
-      if (!m) { actionable(f, input, np); return; }
+      if (!m) { actionable(f, input, np, live); return; }
       if (f.lockLeft > 0) return; // lockOnHit: move frozen while the lock sequence runs (sim/specials.ts)
       f.moveFrame++;
       f.gravityScale = m.gravityScale;
       if (f.moveFrame > totalFrames(m)) {
         if (f.airborne) { setState(f, "air"); return; } // keeps `move` as the one-per-jump marker
-        actionable(f, input, np); return;
+        actionable(f, input, np, live); return;
       }
       applyVelocities(f, m);
       // Throw = LP+LK within 2 frames: a grounded light normal started ≤2 frames ago upgrades to the throw.
-      if (!f.airborne && f.moveFrame <= 3 && m.kind === "normal" && (m.input.button === "LP" || m.input.button === "LK") && throwInput(f)) {
+      if (live && !f.airborne && f.moveFrame <= 3 && m.kind === "normal" && (m.input.button === "LP" || m.input.button === "LK") && throwInput(f)) {
         const t = CHARS[f.char].moves.find((x) => x.kind === "throw");
         if (t) { startMove(f, t); return; }
       }
-      if (f.cancelOk) {
+      if (live && f.cancelOk) {
         const req = requestMove(f, cancelFilter(m), np);
         if (req) startMove(f, req);
       }
@@ -260,44 +272,50 @@ export function stateMachine(f: Fighter, opp: Fighter, input: InputByte, np = 0)
     }
     case "hitstun": case "blockstun":
       if (f.stun > 0) { f.stun--; return; }
-      actionable(f, input, np); return;
+      actionable(f, input, np, live); return;
     case "knockdown":
       if (f.stun > 0) { f.stun--; return; }
       setState(f, "getup"); f.stun = GETUP_FRAMES; f.invuln = "full"; f.invulnFrames = GETUP_FRAMES;
       return;
     case "getup":
       if (f.stun > 0) { f.stun--; return; }
-      actionable(f, input, np); return;
+      actionable(f, input, np, live); return;
     case "thrown":
       // Tech: LP+LK within THROW_TECH_WINDOW frames after the grab frame; command grabs cannot be teched.
-      if (f.stateFrame - 1 <= THROW_TECH_WINDOW && opp.state === "throwing" && curMove(opp)?.kind === "throw" && throwInput(f)) {
+      if (live && f.stateFrame - 1 <= THROW_TECH_WINDOW && opp.state === "throwing" && curMove(opp)?.kind === "throw" && throwInput(f)) {
         techThrow(opp, f);
       }
       return;
     case "throwing":
-      if (opp.state !== "thrown") actionable(f, input, np);
+      if (opp.state !== "thrown") actionable(f, input, np, live);
       return;
     case "techSep":
       if (f.stateFrame <= TECH_SEP_FRAMES) return;
-      actionable(f, input, np); return;
+      actionable(f, input, np, live); return;
     case "juggle":
       return; // ends on landing (afterPhysics)
     case "land": {
       const dur = f.stun > 0 ? f.stun : LANDING_RECOVERY;
       if (f.stateFrame <= dur) return;
-      actionable(f, input, np); return;
+      actionable(f, input, np, live); return;
     }
     case "dashF":
       if (f.stateFrame <= c.dashFwd.frames) return;
-      actionable(f, input, np); return;
+      actionable(f, input, np, live); return;
     case "dashB":
       if (f.stateFrame <= c.dashBack.frames) return;
-      actionable(f, input, np); return;
+      actionable(f, input, np, live); return;
     case "idle": case "walkF": case "walkB": case "crouch":
-      actionable(f, input, np); return;
+      actionable(f, input, np, live); return;
     default:
-      return; // ko / win: S7
+      f.vx = f.airborne ? f.vx : 0; // ko / win: no control (spec §10)
+      return;
   }
+}
+
+/** The fighter started a super on this frame's state-machine step (spec §8.1: freeze + event). */
+export function superStarted(f: Fighter): boolean {
+  return f.state === "attack" && f.moveFrame === 1 && f.stateFrame === 1 && curMove(f)?.kind === "super";
 }
 
 /** After physics (spec §8.2 landing rules not covered by physics()): juggle → knockdown, air attack → land. */
