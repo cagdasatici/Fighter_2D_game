@@ -21,8 +21,8 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S10 | FX, HUD, stages, audio | S9 | TODO | | |
 | S11 | Menus, char select, Versus CPU, Training, CPU AI | S10 | TODO | | |
 | S12a | Server infra copy + FightRoom placeholder (no sim) | S0 | DONE | 5f40b10 | docs/test-results/S12a.md |
-| S12 | Server infrastructure + two-human input authority (S12a + S12b) | S7 | DONE | pending commit | docs/test-results/S12b.md |
-| S12b | Two-human input-authoritative FightRoom | S7, S12a | DONE | pending commit | docs/test-results/S12b.md |
+| S12 | Server infrastructure + two-human input authority (S12a + S12b) | S7 | DONE | aacf6a7 | docs/test-results/S12b.md |
+| S12b | Two-human input-authoritative FightRoom | S7, S12a | DONE | aacf6a7 | docs/test-results/S12b.md |
 | S12c | Server CPU seats | S11, S12b | TODO | | |
 | S13 | Client rollback netcode + online flow | S11, S12 | TODO | | |
 | S14 | Touch controls + gamepad + iPad PWA + play script | S13 | TODO | | |
