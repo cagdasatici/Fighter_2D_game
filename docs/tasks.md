@@ -17,7 +17,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S6 | Projectiles, specials, special rules per char | S5 | DONE (data findings, see S6 notes) | bf79207 | docs/test-results/S6.md |
 | S7 | Supers, meter, round/match flow, balance guardrails, determinism suite | S6 | DONE (liveWireHop resolved by decision 0004) | 779d930 | docs/test-results/S7.md |
 | S8 | Client shell: canvas, game loop, keyboard, local 2P with debug boxes | S7 | DONE (browser verified; physical keyboard check NOT RUN) | 940b07a | docs/test-results/S8.md |
-| S9 | Puppet renderer + 5 skins + pose library | S8 | IMPLEMENTED – ART APPROVAL PENDING | ac2f52f | docs/test-results/S9.md |
+| S9 | Puppet renderer + 5 skins + pose library | S8 | DONE (art approved as placeholder 2026-11-04; polish later) | ac2f52f | docs/test-results/S9.md |
 | S10 | FX, HUD, stages + audio integration | S9, S10a | TODO | | |
 | S10a | Standalone synthesized audio + stage music | S0 | BLOCKED (copy contract question below) | | |
 | S11 | Menus, char select, Versus CPU, Training, CPU AI | S10 | TODO | | |
