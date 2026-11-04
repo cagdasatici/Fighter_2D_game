@@ -1,0 +1,12 @@
+node_modules/
+dist/
+dist-types/
+.env
+data/
+*.log
+*.tsbuildinfo
+/test-results/
+/.worktrees/
+.DS_Store
+# Downloaded third-party packs: never commit (docs/decisions/0001-asset-strategy.md)
+/Archive/

@@ -1,0 +1,15 @@
+{
+  "name": "@kb/server",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": { "dev": "tsx watch src/main.ts", "start": "tsx src/main.ts" },
+  "dependencies": {
+    "@kb/shared": "workspace:*",
+    "@colyseus/schema": "5.0.43",
+    "@colyseus/ws-transport": "0.18.4",
+    "colyseus": "0.18.10",
+    "zod": "4.6.7"
+  },
+  "devDependencies": { "tsx": "4.23.15" }
+}

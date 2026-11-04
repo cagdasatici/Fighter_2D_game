@@ -1,0 +1,26 @@
+{
+  "name": "knockout-bash",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": { "node": "24.22.2" },
+  "scripts": {
+    "typecheck": "tsc -b",
+    "lint": "node ops/scripts/lint-boundaries.mjs && node ops/scripts/lint-timers.mjs",
+    "test": "vitest run",
+    "build": "pnpm -r --filter ./apps/client run build",
+    "dev:server": "pnpm --filter @kb/server run dev",
+    "dev:client": "pnpm --filter @kb/client run dev",
+    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
+    "test:browser": "playwright test"
+  },
+  "devDependencies": {
+    "@types/node": "24.0.0",
+    "@colyseus/sdk": "0.18.9",
+    "@playwright/test": "1.64.1",
+    "colyseus": "0.18.10",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
+  }
+}
