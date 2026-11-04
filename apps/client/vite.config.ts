@@ -12,7 +12,8 @@ function offlineShell(): Plugin {
     apply: "build",
     configResolved(c) { outDir = join(c.root, c.build.outDir); },
     generateBundle(_o, bundle) {
-      const assets = Object.keys(bundle).filter((n) => !n.endsWith(".map")).map((n) => "/" + n).sort();
+      // Admin page and its own chunks are never precached.
+      const assets = Object.keys(bundle).filter((n) => !n.endsWith(".map") && n !== "admin.html" && !n.startsWith("assets/admin-")).map((n) => "/" + n).sort();
       buildId = createHash("sha256").update(assets.join("\n")).digest("hex").slice(0, 12);
       this.emitFile({ type: "asset", fileName: "asset-manifest.json", source: JSON.stringify({ buildId, assets }) + "\n" });
     },
@@ -37,7 +38,13 @@ export default defineConfig({
   },
   build: {
     target: "es2022", sourcemap: true,
-    rollupOptions: { input: { main: join(import.meta.dirname, "index.html") } },
+    rollupOptions: {
+      input: { main: join(import.meta.dirname, "index.html"), admin: join(import.meta.dirname, "admin.html") },
+      output: {
+        entryFileNames: (c) => (c.name === "admin" ? "assets/admin-[hash].js" : "assets/[name]-[hash].js"),
+        assetFileNames: (a) => ((a.names ?? []).some((n) => n.startsWith("admin")) ? "assets/admin-[hash][extname]" : "assets/[name]-[hash][extname]"),
+      },
+    },
   },
   plugins: [offlineShell()],
 });

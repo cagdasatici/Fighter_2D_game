@@ -22,7 +22,8 @@ import { AdvantageMeter, advantageText, applyTrainingRefills, dummyInput, type T
 import { showCharSelect } from '../ui/CharSelect.js';
 import { showHowToPlay } from '../ui/HowToPlay.js';
 import { showPause } from '../ui/Pause.js';
-import { drawResults, showResults } from '../ui/Results.js';
+import { drawResults, showResults, type ResultsPanel } from '../ui/Results.js';
+import { DISCONNECTED_TEXT } from '../ui/text.js';
 import { loadSettings, showSettings, type Settings } from '../ui/Settings.js';
 import { showTitle } from '../ui/Title.js';
 import { VS_FRAMES, drawVs, showVs } from '../ui/VsScreen.js';
@@ -63,6 +64,8 @@ export class AppFlow {
   private seedCounter = 1;
   /** Online session (S13): room client, clock and rollback driver. Null offline. */
   private net: { client: RoomClient; clock: ClockSync; rb: Rollback | null; panel: RoomPanel | null; offs: (() => void)[]; ping: number | null } | null = null;
+  /** Online results panel, for the rematch wait / opponent-left notices. */
+  private resultsPanel: ResultsPanel | null = null;
   private readonly training: TrainingOptions = { dummy: 'stand', infiniteHp: true, infiniteMeter: false };
   private readonly advantage = new AdvantageMeter();
   private boxes: boolean;
@@ -123,7 +126,7 @@ export class AppFlow {
     this.setScene('menu'); this.paused = false; this.audio.setStage(null);
     this.show(root => showTitle(root, c => {
       if (c === 'settings') this.toSettings();
-      else if (c === 'howto') this.show(r => showHowToPlay(r, this.settings.keys[0], () => this.toTitle()));
+      else if (c === 'howto') this.show(r => showHowToPlay(r, this.settings.keys, () => this.toTitle()));
       else if (c === 'online') this.toOnline();
       else if (c === 'cpu' || c === 'local' || c === 'training') { this.mode = c; this.toSelect(); }
     }));
@@ -165,10 +168,11 @@ export class AppFlow {
     this.net = { client, clock: new ClockSync(), rb: null, panel: null, offs: [], ping: null };
     return this.net;
   }
-  private toOnline(): void {
+  private toOnline(notice?: string): void {
     this.setScene('menu'); this.audio.setStage(null);
     const net = this.onlineClient();
     this.show(root => showOnlineLobby(root, {
+      notice,
       list: () => net.client.listRooms(),
       join: async code => { await net.client.join(code); this.toRoom(); },
       login: (invite, name) => net.client.login(invite, name),
@@ -181,7 +185,7 @@ export class AppFlow {
     if (!net) return;
     this.setScene('menu');
     net.offs.push(net.client.onMessage(m => this.onServer(m)));
-    net.offs.push(net.client.onClose(() => { if (this.net === net) { this.leaveOnline(); this.toTitle(); } }));
+    net.offs.push(net.client.onClose(() => { if (this.net === net) { this.leaveOnline(); this.toOnline(DISCONNECTED_TEXT); } }));
     // Clock pings once per second while seated (cleared in leaveOnline).
     const ping = (): void => {
       const n = net.clock.makePing(Date.now());
@@ -206,7 +210,11 @@ export class AppFlow {
   private onServer(m: ServerMsg): void {
     const net = this.net;
     if (!net) return;
-    if (m.t === 'lobby') { net.panel?.update(m); return; }
+    if (m.t === 'lobby') {
+      net.panel?.update(m);
+      if (this.scene === 'results' && m.slots.length < 2) this.resultsPanel?.opponentLeft();
+      return;
+    }
     if (m.t === 'start') {
       net.rb = new Rollback(m, msg => net.client.send(msg));
       this.mode = 'cpu'; this.chars = m.chars; this.stage = m.stage;
@@ -248,11 +256,15 @@ export class AppFlow {
   }
   private toResultsOnline(): void {
     this.setScene('results'); this.sceneFrame = 0; this.audio.setStage(null);
-    this.show(root => showResults(root, this.state, null, c => {
-      if (c === 'rematch') this.net?.client.send({ t: 'rematch' });
-      else if (c === 'select') { this.leaveOnline(); this.toOnline(); }
-      else { this.leaveOnline(); this.toTitle(); }
-    }));
+    this.show(root => {
+      const panel = showResults(root, this.state, null, c => {
+        if (c === 'rematch') this.net?.client.send({ t: 'rematch' });
+        else if (c === 'select') { this.leaveOnline(); this.toOnline(); }
+        else { this.leaveOnline(); this.toTitle(); }
+      }, true);
+      this.resultsPanel = panel;
+      return () => { if (this.resultsPanel === panel) this.resultsPanel = null; panel(); };
+    });
   }
 
   private togglePause(): void {
@@ -316,7 +328,7 @@ export class AppFlow {
     else this.drawScene(ctx, alpha);
     if (this.mode === 'training') {
       ctx.font = 'bold 14px system-ui'; ctx.textAlign = 'left'; ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#1b1b2a'; ctx.lineWidth = 3;
-      const text = `ADV ${advantageText(this.advantage.last)}`;
+      const text = `FRAME ADV ${advantageText(this.advantage.last)}`;
       ctx.strokeText(text, 12, 72); ctx.fillText(text, 12, 72); // below the P1 name tag, clear of the meter
     }
     if (import.meta.env.DEV && this.net?.rb) {

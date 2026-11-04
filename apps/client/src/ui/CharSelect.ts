@@ -2,7 +2,8 @@ import { CHARS, type CharId, type StageId } from '@kb/shared';
 import { SKINS } from '../render/Gallery.js';
 import { drawPuppet } from '../render/Puppet.js';
 import { getPose } from '../render/poses.js';
-import { button, el, screen } from './dom.js';
+import { button, el, menuNav, screen } from './dom.js';
+import { keyLabel, stageName } from './text.js';
 import type { KeyMap } from './Settings.js';
 
 export const ROSTER: readonly CharId[] = ['bolt', 'volt', 'chompa', 'kaze', 'bao'];
@@ -64,19 +65,22 @@ export function showCharSelect(root: HTMLElement, o: CharSelectOpts): () => void
     });
     const shown = stage ?? HOME_STAGE[ROSTER[cur[0]]!];
     stageRow.replaceChildren(el('span', {}, ['Stage']), ...STAGES.map(st => {
-      const b = button(st, () => { stage = st; draw(); }, { class: `kb-btn${st === shown ? ' kb-on' : ''}` });
+      const b = button(stageName(st), () => { stage = st; draw(); }, { class: `kb-btn${st === shown ? ' kb-on' : ''}`, 'data-stage': st, 'aria-pressed': String(st === shown) });
       return b;
     }));
     const p = active();
-    status.textContent = o.twoHumans ? 'P1 and P2: left/right to choose, LP to confirm, LK to cancel'
-      : p === 0 ? 'Choose your fighter (LP / click)' : p === 1 ? 'Choose the opponent (LP / click, LK to go back)' : '';
+    const k = (c: string): string => keyLabel(c);
+    const k1 = o.keys[0], k2 = o.keys[1];
+    status.textContent = o.twoHumans
+      ? `P1: ${k(k1.left)}/${k(k1.right)} choose, ${k(k1.LP)} lock in, ${k(k1.LK)} undo · P2: ${k(k2.left)}/${k(k2.right)}, ${k(k2.LP)}, ${k(k2.LK)}`
+      : p === 0 ? `Pick your fighter: ${k(k1.left)}/${k(k1.right)} then ${k(k1.LP)}, or tap a portrait.`
+      : p === 1 ? `Now pick your opponent. ${k(k1.LK)} goes back to your pick.` : 'Get ready…';
   };
   const lock = (p: 0 | 1): void => {
     locked[p] = true; draw();
     if (locked[0] && locked[1]) o.done({ chars: [ROSTER[cur[0]]!, ROSTER[cur[1]]!], stage: stage ?? HOME_STAGE[ROSTER[cur[0]]!] });
   };
   const onKey = (e: KeyboardEvent): void => {
-    if (e.code === 'Escape') { e.preventDefault(); o.back(); return; }
     for (const k of [0, 1] as const) {
       const map = o.keys[k];
       const p: 0 | 1 | null = o.twoHumans ? k : k === 0 ? active() ?? 1 : null;
@@ -93,8 +97,11 @@ export function showCharSelect(root: HTMLElement, o: CharSelectOpts): () => void
     }
   };
   draw();
-  const panel = screen('Character Select', [el('div', { class: 'kb-tiles' }, tiles), stageRow, status, button('Back', o.back)], 'kb-wide');
+  const panel = screen('Character Select', [el('div', { class: 'kb-tiles' }, tiles), stageRow, status,
+    el('div', { class: 'kb-actions' }, [button('Back', o.back)])], 'kb-wide');
   root.replaceChildren(panel);
   window.addEventListener('keydown', onKey);
-  return () => { window.removeEventListener('keydown', onKey); panel.remove(); };
+  // Arrow keys stay with the fighter cursors (P2 uses them); Esc / gamepad B go back, gamepad A presses the focused tile.
+  const stopNav = menuNav(panel, { back: o.back, keys: false });
+  return () => { stopNav(); window.removeEventListener('keydown', onKey); panel.remove(); };
 }

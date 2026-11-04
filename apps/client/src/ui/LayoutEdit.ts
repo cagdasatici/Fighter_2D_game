@@ -1,4 +1,4 @@
-import { button, el, screen } from './dom.js';
+import { button, el, menuNav, screen } from './dom.js';
 
 /**
  * Touch button layout (spec §12.3, LayoutEdit pattern from battlegrounds, simplified): each button is stored as its
@@ -28,12 +28,12 @@ export function validateLayout(layout: TouchLayout, w: number, h: number): strin
   for (const id of TOUCH_BUTTONS) {
     const b = c[id];
     if (!Number.isFinite(b.cx) || !Number.isFinite(b.cy)) { issues.push(`${id}: invalid`); continue; }
-    if (b.cx - b.r < 0 || b.cy - b.r < 0 || b.cx + b.r > w || b.cy + b.r > h) issues.push(`${id}: outside the screen`);
-    if (b.cx < w / 2) issues.push(`${id}: must stay on the right half (left half is the stick)`);
+    if (b.cx - b.r < 0 || b.cy - b.r < 0 || b.cx + b.r > w || b.cy + b.r > h) issues.push(`${id} can't go off the screen.`);
+    if (b.cx < w / 2) issues.push(`${id} must stay on the right half (the left half is the stick).`);
   }
   for (let i = 0; i < TOUCH_BUTTONS.length; i++) for (let j = i + 1; j < TOUCH_BUTTONS.length; j++) {
     const a = c[TOUCH_BUTTONS[i]!], b = c[TOUCH_BUTTONS[j]!];
-    if (Math.hypot(a.cx - b.cx, a.cy - b.cy) < a.r + b.r) issues.push(`${TOUCH_BUTTONS[i]}/${TOUCH_BUTTONS[j]}: overlap`);
+    if (Math.hypot(a.cx - b.cx, a.cy - b.cy) < a.r + b.r) issues.push(`${TOUCH_BUTTONS[i]} and ${TOUCH_BUTTONS[j]} can't overlap.`);
   }
   return issues;
 }
@@ -64,7 +64,7 @@ export function effectiveLayout(layout: TouchLayout, w: number, h: number): Touc
 export function showLayoutEdit(root: HTMLElement, initial: TouchLayout, done: (layout: TouchLayout) => void): () => void {
   const layout = structuredClone(effectiveLayout(initial, window.innerWidth, window.innerHeight));
   const field = el('div', { class: 'kb-touch kb-touch-edit' });
-  const status = el('p', { class: 'kb-row' }, ['Drag a button to move it.']);
+  const status = el('p', { class: 'kb-row', role: 'status', 'aria-live': 'polite' }, ['Drag a button to move it.']);
   const nodes = new Map<TouchButtonId, HTMLElement>();
   const place = (): void => {
     const c = circles(layout, window.innerWidth, window.innerHeight);
@@ -87,9 +87,10 @@ export function showLayoutEdit(root: HTMLElement, initial: TouchLayout, done: (l
   };
   const up = (ev: PointerEvent): void => { if (drag && ev.pointerId === drag.pointer) drag = null; };
   const panel = screen('Touch layout', [status, el('div', { class: 'kb-actions' }, [
-    button('Reset', () => { Object.assign(layout, structuredClone(DEFAULT_LAYOUT)); place(); }),
-    button('Done', () => { saveLayout(layout); done(layout); }),
+    button('Reset Layout', () => { Object.assign(layout, structuredClone(DEFAULT_LAYOUT)); place(); status.textContent = 'Layout reset.'; }),
+    button('Save', () => { saveLayout(layout); done(layout); }),
   ])], 'kb-layout-panel');
+  const stopNav = menuNav(panel, { back: () => { saveLayout(layout); done(layout); } });
   root.replaceChildren(panel);
   document.body.append(field);
   place();
@@ -98,6 +99,7 @@ export function showLayoutEdit(root: HTMLElement, initial: TouchLayout, done: (l
   window.addEventListener('pointercancel', up);
   window.addEventListener('resize', place);
   return () => {
+    stopNav();
     window.removeEventListener('pointermove', move);
     window.removeEventListener('pointerup', up);
     window.removeEventListener('pointercancel', up);

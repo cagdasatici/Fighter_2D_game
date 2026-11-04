@@ -28,6 +28,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S13 | Client rollback netcode + online flow | S11, S12 | DONE | b828347 | docs/test-results/S13.md |
 | S14 | Touch controls + gamepad + iPad PWA + play script | S13 | IMPLEMENTED – DEVICE CHECK PENDING | e1abc90 | docs/test-results/S14.md |
 | S15 | Browser tests, polish pass, release checklist | S14 | IMPLEMENTED – DEVICE CHECK PENDING (decision 0011; release checklist NOT RUN) | a1428e5 | docs/test-results/S15.md |
+| TXT | Text, menus, settings, admin page (owner request) | S15 | DONE (decision 0013; gamepad/iPad NOT RUN) | see git log "TXT:" | docs/test-results/TXT.md |
 
 S12 can run in parallel with S8–S11 (different files).
 

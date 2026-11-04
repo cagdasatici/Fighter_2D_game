@@ -85,3 +85,16 @@
 .kb-tpause { position: absolute; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: 44px; height: 44px;
   border-radius: 8px; border: 2px solid #1b1b2a; background: rgba(255, 255, 255, 0.7); font: 700 16px system-ui, sans-serif; }
 html, body { overscroll-behavior: none; }
+/* TXT: settings sections, tabs, value readouts, lists */
+.kb-section { border: 2px solid #444466; border-radius: 12px; margin: 10px 0; padding: 6px 14px 10px; }
+.kb-section legend { color: #ffd84a; font-weight: 900; font-style: italic; padding: 0 6px; }
+.kb-val { display: inline-flex; align-items: center; gap: 8px; }
+.kb-val output { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; color: #ffd84a; font-weight: 700; }
+.kb-hint.kb-left { text-align: left; }
+.kb-settings select, .kb-pause select { font: inherit; min-height: 36px; border-radius: 8px; padding: 2px 8px; }
+.kb-screen input:focus-visible, .kb-screen select:focus-visible { outline: 3px solid #4aa8ff; outline-offset: 2px; }
+.kb-tabs { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-bottom: 10px; }
+.kb-list { list-style: none; margin: 0 0 10px; padding: 0; font-size: 14px; }
+.kb-list li { display: grid; grid-template-columns: minmax(90px, max-content) 1fr; gap: 12px; padding: 4px 0; border-bottom: 1px solid #333355; }
+.kb-wrap { flex-wrap: wrap; justify-content: center; }
+.kb-tile:focus-visible.kb-p1 { outline-color: #ffd84a; }

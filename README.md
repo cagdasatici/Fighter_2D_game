@@ -13,9 +13,9 @@ Share > Add to Home Screen. Needs Node 24 and pnpm 10 (`pnpm install` once).
 
 Run `pnpm admin:setup` once in a terminal on the host. It prompts twice without echoing the password and stores
 only a private scrypt hash in `~/kb-data` (or `DATA_DIR`). No default admin password exists. The admin HTTP API
-(`/api/admin/*`) uses it. The admin web page (`/admin.html`) printed by `pnpm play` is not shipped yet (see
-`docs/decisions/0011-s15-browser-tests-polish.md`); players do not need it, because the server always lists the
-**Play** room.
+(`/api/admin/*`) uses it, and so does the admin web page (`/admin.html`, printed by `pnpm play`): status, invitations,
+players, rooms (optionally with a CPU in seat 2) and the announcement banner. Players do not need it, because the
+server always lists the **Play** room.
 
 Bookmark the printed **Game home** address, without an invitation fragment. An invitation is needed for initial
 player access; the same browser can return using its saved session until expiry/revocation. The host must remain
