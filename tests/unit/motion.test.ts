@@ -89,3 +89,20 @@ for (const facing of [1, -1] as const) {
     });
   });
 }
+
+describe("decision 0002: held diagonal is not a motion", () => {
+  for (const facing of [1, -1] as const) {
+    it(`holding 3 does not trigger qcf or dp (facing ${facing})`, () => {
+      const f = mk();
+      feed(f, facing, [3, 3, 3, 3, 3]);
+      expect(detectMotion(f, facing, "qcf", 12)).toBe(false);
+      expect(detectMotion(f, facing, "dp", 14)).toBe(false);
+    });
+    it(`real qcf and dp still work after the fix (facing ${facing})`, () => {
+      const a = mk(); feed(a, facing, [2, 3, 6]);
+      expect(detectMotion(a, facing, "qcf", 12)).toBe(true);
+      const b = mk(); feed(b, facing, [6, 2, 3]);
+      expect(detectMotion(b, facing, "dp", 14)).toBe(true);
+    });
+  }
+});

@@ -49,11 +49,15 @@ function motionAgo(f: HistoryOwner, facing: 1 | -1, motion: MotionId, frames: nu
     return -1;
   }
   const seq = SEQ[motion];
-  let idx = seq.length - 1, last = -1;
+  // Consecutive steps must be matched on frames with DIFFERENT numpad directions
+  // (decision 0002): holding one diagonal (e.g. 3,3,3) must not satisfy qcf/dp.
+  let idx = seq.length - 1, last = -1, prevNp = -1;
   for (let ago = 0; ago < w; ago++) {
     const b = inputAt(f, ago);
-    if (matches(seq[idx] ?? -1, b, numpad(b, facing))) {
+    const np = numpad(b, facing);
+    if (np !== prevNp && matches(seq[idx] ?? -1, b, np)) {
       if (idx === seq.length - 1) last = ago;
+      prevNp = np;
       idx--;
       if (idx < 0) return last;
     }

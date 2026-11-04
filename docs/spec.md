@@ -185,6 +185,8 @@ A motion is a sequence of numpad directions that must appear **in order** in the
 | `spin` (360) | contains 4, 2, 6 and 8 in any order | 30 (an `8` may be the jump frame; a 360 grab may be input while the fighter is in JUMP_SQUAT frames 1-2 and cancels the jump) |
 | `charge` | hold any back (1,4,7) for ≥40 consecutive frames, then 6 within 10 frames | — (fighter tracks `chargeBack` counter; reset to 0 the frame back is not held, but keep the value for 10 frames after release in `chargeGrace`) |
 
+**Direction change (decision 0002):** consecutive steps must be matched on frames with different numpad directions, so a held diagonal never counts as a motion.
+
 **Button press buffer:** a special triggers if its button is pressed on the current frame or any of the previous 3 frames (and nothing consumed it yet; set `buffered = 0` after use).
 
 **Priority on a given frame** (first match wins): super (`dqcf`) → `spin` → `dp` → `qcf`/`qcb` (most recent final step wins; tie → `qcf`) → `charge` → `dd` → throw (LP+LK pressed within 2 frames of each other) → command normal → normal.
