@@ -24,7 +24,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S12a | Server infra copy + FightRoom placeholder (no sim) | S0 | DONE | 5f40b10 | docs/test-results/S12a.md |
 | S12 | Server infrastructure + two-human input authority (S12a + S12b) | S7 | DONE | aacf6a7 | docs/test-results/S12b.md |
 | S12b | Two-human input-authoritative FightRoom | S7, S12a | DONE | aacf6a7 | docs/test-results/S12b.md |
-| S12c | Server CPU seats | S11, S12b | DONE | PENDING | docs/test-results/S12c.md |
+| S12c | Server CPU seats | S11, S12b | DONE | f097ce7 | docs/test-results/S12c.md |
 | S13 | Client rollback netcode + online flow | S11, S12 | TODO | | |
 | S14 | Touch controls + gamepad + iPad PWA + play script | S13 | TODO | | |
 | S15 | Browser tests, polish pass, release checklist | S14 | TODO | | |
