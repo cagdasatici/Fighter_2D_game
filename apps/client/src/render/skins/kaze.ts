@@ -19,7 +19,7 @@ export const KAZE_SKIN: Skin = {
     const [nx, ny] = at(b.torso, 34, 0);
     oval(ctx, nx, ny, 7, 4, 0, '#e63946');                                        // scarf knot
   },
-  drawHead(ctx, b) {
+  drawHead(ctx, b, info) {
     const h = b.head;
     inFrame(ctx, h.x1, h.y1, h.a, () => {
       oval(ctx, 0, 0, 13, 13, 0, INDIGO);
@@ -30,8 +30,12 @@ export const KAZE_SKIN: Skin = {
       ctx.beginPath();
       for (let i = 0; i <= 30; i++) { const t = i / 30 * Math.PI * 3, r = 0.4 + i / 30 * 2.6; const x = 4 + Math.cos(t) * r, y = -8 + Math.sin(t) * r * 0.8; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
       ctx.strokeStyle = '#5a6070'; ctx.lineWidth = 0.8; ctx.stroke();               // 1.5-turn wind swirl
-      stroke(ctx, [[3, -2], [11, -3]], 2.2, '#ffffff');                            // sharp eye slit
-      stroke(ctx, [[2, -4.5], [11, -5.5]], 1.2, '#11121e');
+      if (info.mood === 'hurt') stroke(ctx, [[3, -4], [8, -2], [3, 0]], 1.6, '#ffffff'); // squeezed shut
+      else {
+        stroke(ctx, [[3, -2], [11, -3]], 2.6, '#ffffff');                          // sharp eye slit
+        oval(ctx, 8.5, -2.6, 1.1, 1.1, 0, '#11121e', false);                       // pupil
+        stroke(ctx, [[2, -4.5], [11, info.mood === 'fierce' ? -4 : -5.5]], 1.4, '#11121e');
+      }
     });
   },
   drawFist(ctx, s, back) {

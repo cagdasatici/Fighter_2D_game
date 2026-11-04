@@ -27,11 +27,20 @@ export interface CharSelectOpts {
 function portrait(id: CharId): HTMLCanvasElement {
   const c = el('canvas', { width: '192', height: '200', class: 'kb-portrait' });
   const ctx = c.getContext('2d');
-  if (ctx) { ctx.scale(2, 2); ctx.translate(48, 96); ctx.scale(0.62, 0.62); drawPuppet(ctx, SKINS[id], getPose('idle'), 0, 0, 1, { frame: 0 }); }
+  if (ctx) {
+    // Accent-coloured spotlight backdrop, then the fighter large and slightly cropped like a portrait.
+    const g = ctx.createRadialGradient(96, 80, 10, 96, 100, 130);
+    g.addColorStop(0, SKINS[id].accent); g.addColorStop(1, '#1b1b2a');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 192, 200);
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    for (let i = -4; i < 10; i++) { ctx.beginPath(); ctx.moveTo(i * 30, 200); ctx.lineTo(i * 30 + 14, 200); ctx.lineTo(i * 30 + 74, 0); ctx.lineTo(i * 30 + 60, 0); ctx.fill(); }
+    ctx.scale(2, 2); ctx.translate(48, 116); ctx.scale(0.8, 0.8);
+    drawPuppet(ctx, SKINS[id], getPose('idle'), 0, 0, 1, { frame: 0 });
+  }
   return c;
 }
 const bar = (name: string, v: number): HTMLElement =>
-  el('div', { class: 'kb-stat' }, [el('span', {}, [name]), el('span', { class: 'kb-bar' }, [el('i', { style: `width:${v * 20}%` })])]);
+  el('div', { class: 'kb-stat' }, [el('span', {}, [name]), el('span', { class: 'kb-bar' }, [el('i', { style: `width:${v * 20}%` })]), el('em', {}, [`${v}/5`])]);
 
 /** Spec §15 character select: P1 cursor blue, P2 red; vs CPU / training P1 picks both in turn. */
 export function showCharSelect(root: HTMLElement, o: CharSelectOpts): () => void {

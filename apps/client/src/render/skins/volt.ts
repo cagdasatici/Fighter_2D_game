@@ -1,4 +1,4 @@
-import { at, inFrame, oval, poly, rig, stroke, torsoCapsule } from '../Puppet.js';
+import { at, eye, inFrame, oval, poly, rig, setLidColor, stroke, torsoCapsule } from '../Puppet.js';
 import type { Skin } from './types.js';
 
 // Volt Vance — tall teal jumpsuit, goggles on forehead, yellow rubber gloves, coiled cable (docs/characters.md §3).
@@ -23,16 +23,17 @@ export const VOLT_SKIN: Skin = {
     const p = (al: number, s: number): [number, number] => at(b.torso, al, s);
     poly(ctx, [p(33, -4), p(28, 1), p(28, -2), p(22, 3), p(27, -3), p(27, 0)], '#ffe14d'); // plain zigzag patch
   },
-  drawHead(ctx, b) {
+  drawHead(ctx, b, info) {
     const h = b.head;
     inFrame(ctx, h.x1, h.y1, h.a, () => {
       for (const [x, s] of [[-8, -1], [-2, 1], [5, 0]] as const) poly(ctx, [[x - 6, -9], [x + 6, -9], [x + s * 3, -21]], HAIR);
       oval(ctx, 0, 1, 12, 14, 0, SKIN);
       oval(ctx, 12, 3, 2.5, 3, 0, '#e0a47e');                                     // nose
-      oval(ctx, 7, -1, 1.6, 2.2, 0, '#1b1b2a', false);
+      setLidColor(SKIN); eye(ctx, 7, -0.5, 2.9, info.mood, '#2a5a8a');
       stroke(ctx, [[3, -6], [7, -4], [11, -6]], 1.8, HAIR);                      // worried brow (up in the middle)
-      stroke(ctx, [[7, 9], [10, 9]], 1.6, '#7a3a30');                            // small mouth
-      for (const gx of [-1, 8]) { oval(ctx, gx, -10, 4.5, 4.5, 0, '#8d95a0'); oval(ctx, gx, -10, 2.8, 2.8, 0, '#7fd4ff', false); }
+      if (info.mood === 'hurt') oval(ctx, 8.5, 8.5, 2.2, 2, 0, '#7a3a30', false);
+      else stroke(ctx, [[7, 9], [10, 9]], 1.6, '#7a3a30');                       // small mouth
+      for (const gx of [-1, 8]) { oval(ctx, gx, -10, 4.5, 4.5, 0, '#8d95a0'); oval(ctx, gx, -10, 2.8, 2.8, 0, '#7fd4ff', false); oval(ctx, gx - 1, -11, 1, 1, 0, '#ffffff', false); }
       stroke(ctx, [[-10, -10], [-5.5, -10]], 2, '#555c66');                      // goggle strap
     });
   },

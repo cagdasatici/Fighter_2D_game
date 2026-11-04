@@ -1,4 +1,4 @@
-import { at, inFrame, oval, poly, rig, rotOf, stroke } from '../Puppet.js';
+import { at, eye, inFrame, oval, poly, rig, rotOf, setLidColor, stroke } from '../Puppet.js';
 import type { Seg, Skin } from './types.js';
 
 // Chompa — plum dino, cream belly plate, three orange back spikes, stubby tail, hinged jaw (docs/characters.md §4).
@@ -37,9 +37,7 @@ export const CHOMPA_SKIN: Skin = {
       oval(ctx, 6, -3, 18, 11, 0, PLUM);                                          // big oval head (34 long)
       oval(ctx, 21, -6, 1.3, 1.3, 0, '#1b1b2a', false); oval(ctx, 17, -7, 1.3, 1.3, 0, '#1b1b2a', false); // nostrils
       for (const x of [9, 14, 19]) poly(ctx, [[x - 2, 7], [x + 2, 7], [x, 10.5]], '#fff8e8', false); // upper teeth
-      oval(ctx, 4, -7, 4.5, 4, 0, '#fffaf0');                                     // eye
-      oval(ctx, 5.5, -6.5, 2.4, 2.6, 0, '#1b1b2a', false);
-      oval(ctx, 6.3, -7.6, 0.9, 0.9, 0, '#ffffff', false);                          // highlight
+      setLidColor(PLUM); eye(ctx, 4.5, -7, 4.6, info.mood);                        // big shared-style eye
       stroke(ctx, [[-1, -12], [9, -9]], 2.5, '#4a1530');                          // angry-cute brow
     });
   },

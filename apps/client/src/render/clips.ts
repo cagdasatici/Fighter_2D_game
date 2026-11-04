@@ -52,7 +52,36 @@ export function clipFor(f: Fighter, move: MoveDef | null): Clip {
   }
 }
 
-/** Resolve a clip into a concrete pose. */
+/** Smoothstep easing for pose blends: keys ease in and out instead of moving at constant speed. */
+export function ease(t: number): number { const c = Math.max(0, Math.min(1, t)); return c * c * (3 - 2 * c); }
+
+/** Resolve a clip into a concrete pose (eased between keys). */
 export function poseOf(clip: Clip): Pose {
-  return clip.t === 0 ? getPose(clip.pose) : lerpPose(getPose(clip.pose), getPose(clip.nextPose), clip.t);
+  return clip.t === 0 ? getPose(clip.pose) : lerpPose(getPose(clip.pose), getPose(clip.nextPose), ease(clip.t));
+}
+
+/**
+ * Render-only squash (+) / stretch (−) from sim counters: impact squash on hit/block/landing, crouch-down
+ * before a jump, stretch while rising. Never feeds back into the sim.
+ */
+export function squashFor(f: Pick<Fighter, 'state' | 'stateFrame' | 'vy' | 'airborne'>): number {
+  const decay = (peak: number, frames: number): number => (f.stateFrame < frames ? peak * (1 - f.stateFrame / frames) : 0);
+  switch (f.state) {
+    case 'hitstun': case 'thrown': return decay(0.12, 8);
+    case 'blockstun': return decay(0.06, 6);
+    case 'land': return decay(0.14, 6);
+    case 'jumpSquat': return 0.1;
+    case 'air': return f.vy > 600 ? -0.07 : 0;
+    case 'knockdown': return f.airborne ? 0 : decay(0.12, 6);
+    default: return 0;
+  }
+}
+
+/** Face expression for the shared eye helper. */
+export function moodFor(f: Pick<Fighter, 'state'>): 'normal' | 'hurt' | 'fierce' {
+  switch (f.state) {
+    case 'hitstun': case 'juggle': case 'thrown': case 'knockdown': case 'ko': return 'hurt';
+    case 'attack': case 'throwing': return 'fierce';
+    default: return 'normal';
+  }
 }

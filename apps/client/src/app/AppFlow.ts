@@ -9,9 +9,12 @@ import { drawDebug } from '../render/DebugDraw.js';
 import { Fx } from '../render/Fx.js';
 import { Hud } from '../render/Hud.js';
 import { SKINS } from '../render/Gallery.js';
-import { drawPuppet } from '../render/Puppet.js';
+import { drawPuppet, drawShadow } from '../render/Puppet.js';
+import { drawProjectile } from '../render/Projectiles.js';
+import { drawMenuArt } from '../render/MenuArt.js';
 import { drawStage } from '../render/Stage.js';
-import { clipFor, poseOf } from '../render/clips.js';
+import { clipFor, moodFor, poseOf, squashFor } from '../render/clips.js';
+import { getPose } from '../render/poses.js';
 import { GameLoop } from './GameLoop.js';
 import { AudioBus, type AudioContextLike } from '../audio/AudioBus.js';
 import { cuesForFrame } from '../audio/sfx.js';
@@ -31,7 +34,7 @@ import type { ServerMsg } from '@kb/shared/net/protocol';
 import '../ui/experience.css';
 
 declare global {
-  interface Window { __kb?: { readonly state: MatchState; step: (inputs?: [InputByte, InputByte]) => void; start: (mode: Mode, chars?: [CharId, CharId]) => void } }
+  interface Window { __kb?: { readonly state: MatchState; step: (inputs?: [InputByte, InputByte]) => void; start: (mode: Mode, chars?: [CharId, CharId], stage?: StageId) => void } }
 }
 
 export type Mode = 'cpu' | 'local' | 'training';
@@ -94,14 +97,18 @@ export class AppFlow {
       window.__kb = {
         get state() { return app.state; },
         step: (inputs = [0, 0]) => this.advance(inputs),
-        start: (mode, chars = ['bolt', 'volt']) => { this.mode = mode; this.chars = chars; this.startMatch(); this.enterFight(); },
+        start: (mode, chars = ['bolt', 'volt'], stage) => { this.mode = mode; this.chars = chars; if (stage) this.stage = stage; this.startMatch(); this.enterFight(); },
       };
     }
     this.toTitle();
     this.loop.start();
   }
 
-  private newFx(): Fx { return new Fx(by => CHARS[this.state.fighters[by].char].name, by => SKINS[this.state.fighters[by].char].accent); }
+  private newFx(): Fx {
+    const charOf = (by: 0 | 1): CharId => this.state.fighters[by].char;
+    return new Fx(by => CHARS[charOf(by)].name, by => SKINS[charOf(by)].accent,
+      (ctx, by, x, y) => drawPuppet(ctx, SKINS[charOf(by)], getPose('idle'), x, y + 150, by === 0 ? 1 : -1, { scale: 2.2, mood: 'fierce' }));
+  }
   private applySettings(): void {
     const s = this.settings;
     this.audio.setEffectsVolume(s.effectsVolume); this.audio.setMusicVolume(s.musicVolume); this.audio.setMusicEnabled(s.musicOn);
@@ -300,8 +307,9 @@ export class AppFlow {
     if (this.scene === 'vs') { drawVs(ctx, this.chars, this.stage, this.sceneFrame); return; }
     if (this.scene === 'results') { drawResults(ctx, this.state, this.renderTick++); return; }
     if (this.scene === 'menu') {
-      drawStage(ctx, this.stage, { camX: 0, camY: 0, t: this.renderTick++ });
-      ctx.fillStyle = 'rgba(10,10,30,0.6)'; ctx.fillRect(0, 0, WIDTH, HEIGHT);
+      drawStage(ctx, this.stage, { camX: 0, camY: 0, t: this.renderTick });
+      ctx.fillStyle = 'rgba(10,10,30,0.5)'; ctx.fillRect(0, 0, WIDTH, HEIGHT);
+      drawMenuArt(ctx, this.renderTick++);
       return;
     }
     if (this.boxes) drawDebug(ctx, this.state, this.previous, alpha, this.camera, true);
@@ -309,7 +317,7 @@ export class AppFlow {
     if (this.mode === 'training') {
       ctx.font = 'bold 14px system-ui'; ctx.textAlign = 'left'; ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#1b1b2a'; ctx.lineWidth = 3;
       const text = `ADV ${advantageText(this.advantage.last)}`;
-      ctx.strokeText(text, 12, HEIGHT - 12); ctx.fillText(text, 12, HEIGHT - 12);
+      ctx.strokeText(text, 12, 72); ctx.fillText(text, 12, 72); // below the P1 name tag, clear of the meter
     }
     if (import.meta.env.DEV && this.net?.rb) {
       ctx.font = 'bold 12px system-ui'; ctx.textAlign = 'right'; ctx.fillStyle = '#ffffff';
@@ -331,14 +339,16 @@ export class AppFlow {
       const move = f.state === 'attack' && f.move ? getMove(f.char, f.move) ?? null : null;
       const flash = (f.state === 'hitstun' || f.state === 'juggle') && f.stateFrame <= 2 ? 'hit' as const : null;
       drawPuppet(ctx, SKINS[f.char], poseOf(clipFor(f, move)), sx(x), sy(y), f.facing,
-        { frame: s.frame, meterFull: f.meter >= METER_MAX, glow: f.meter >= METER_MAX, flash });
+        { frame: s.frame, meterFull: f.meter >= METER_MAX, glow: f.meter >= METER_MAX, flash, squash: squashFor(f), mood: moodFor(f) });
     };
+    for (const i of [0, 1] as const) {
+      const f = s.fighters[i], old = this.previous.fighters[i];
+      const x = (old.x + (f.x - old.x) * alpha) / PX, y = (old.y + (f.y - old.y) * alpha) / PX;
+      drawShadow(ctx, sx(x), sy(0), y, SKINS[f.char].bones.torso.width * 0.9 + 6);
+    }
     const superBy = this.fx.superLeft > 0 ? this.fx.superBy : null;
     for (const i of [0, 1] as const) if (i !== superBy) drawFighter(i);
-    for (const p of s.projectiles) {
-      ctx.fillStyle = SKINS[s.fighters[p.owner].char].accent; ctx.strokeStyle = '#1b1b2a'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.ellipse(sx(p.x / PX), sy(p.y / PX), p.w / 2, p.h / 2, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    }
+    for (const p of s.projectiles) drawProjectile(ctx, p, sx, sy, s.frame, SKINS[s.fighters[p.owner].char].accent);
     this.fx.drawDim(ctx);
     if (superBy !== null) drawFighter(superBy);
     this.fx.draw(ctx, sx, sy);

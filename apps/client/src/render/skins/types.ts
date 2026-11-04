@@ -18,7 +18,7 @@ export interface Seg { x0: number; y0: number; x1: number; y1: number; a: number
 export type Bones = Record<BoneId, Seg> & Partial<Record<ExtraBoneId, Seg>>;
 
 /** Per-draw info handed to skin hooks. Coordinates are local, facing right, y down, origin at the feet. */
-export interface DrawInfo { frame: number; meterFull: boolean; outline: string; jawOpen: number }
+export interface DrawInfo { frame: number; meterFull: boolean; outline: string; jawOpen: number; mood: 'normal' | 'hurt' | 'fierce' }
 
 export interface Skin {
   id: CharId;

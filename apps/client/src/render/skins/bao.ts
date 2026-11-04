@@ -1,4 +1,4 @@
-import { at, capsule, inFrame, oval, rig, rotOf, stroke } from '../Puppet.js';
+import { at, capsule, eye, inFrame, oval, rig, rotOf, setLidColor, stroke } from '../Puppet.js';
 import type { Skin } from './types.js';
 
 // Bao — brown bear, forest-green sleeveless vest, gold knots, white sash, steamer basket (docs/characters.md §6).
@@ -27,7 +27,7 @@ export const BAO_SKIN: Skin = {
     const [x0, y0] = at(b.torso, 2, -20), [x1, y1] = at(b.torso, 2, 20);
     capsule(ctx, { x0, y0, x1, y1 }, 8, SASH);                                    // wide white sash
   },
-  drawHead(ctx, b) {
+  drawHead(ctx, b, info) {
     const h = b.head;
     inFrame(ctx, h.x1, h.y1, h.a, () => {
       oval(ctx, -9, -14, 5.5, 5.5, 0, FUR); oval(ctx, -9, -14, 2.8, 2.8, 0, LIGHT, false);
@@ -35,15 +35,15 @@ export const BAO_SKIN: Skin = {
       oval(ctx, 0, 0, 17, 16, 0, FUR);
       oval(ctx, 11, 5, 8, 6.5, 0, LIGHT);                                         // muzzle
       oval(ctx, 17, 2.5, 3, 2.3, 0, '#1b1b2a', false);                             // nose
-      stroke(ctx, [[12, 9], [15, 10.5], [18, 9]], 1.4, '#4a2e1a');               // smile
-      oval(ctx, 8, -4, 2.1, 2.6, 0, '#1b1b2a', false);
-      oval(ctx, 8.7, -4.8, 0.8, 0.8, 0, '#ffffff', false);                          // friendly eye
+      if (info.mood === 'hurt') oval(ctx, 15, 10, 2.4, 1.8, 0, '#4a2e1a', false);
+      else stroke(ctx, [[12, 9], [15, 10.5], [18, 9]], 1.4, '#4a2e1a');          // smile
+      setLidColor(FUR); eye(ctx, 8, -3.5, 3.2, info.mood, '#3a2414');              // friendly eye
       stroke(ctx, [[3, -9], [12, -9.5]], 3.2, '#4a2e1a');                         // thick eyebrow
     });
   },
   drawFoot(ctx, s, back) {
     oval(ctx, (s.x0 + s.x1) / 2, (s.y0 + s.y1) / 2 + 1, 9, 5.5, rotOf(s.a), back ? '#2b2724' : '#3a3530');
-    const [x, y] = at({ ...s, a: s.a - 90 }, 3);
-    oval(ctx, x, y, 6, 3, rotOf(s.a + 90), back ? '#b6b3ab' : SASH);               // ankle wrap
+    const [x0, y0] = at(s, -5, -3), [x1, y1] = at(s, 5, -3);
+    capsule(ctx, { x0, y0, x1, y1 }, 5, back ? '#b6b3ab' : SASH);                   // ankle wrap band
   },
 };
