@@ -11,6 +11,8 @@ import { drawPuppet } from '../render/Puppet.js';
 import { drawStage } from '../render/Stage.js';
 import { clipFor, poseOf } from '../render/clips.js';
 import { GameLoop } from './GameLoop.js';
+import { AudioBus, type AudioContextLike } from '../audio/AudioBus.js';
+import { cuesForFrame } from '../audio/sfx.js';
 
 declare global {
   interface Window { __kb?: { state: MatchState; step: (inputs?: [InputByte, InputByte]) => void } }
@@ -28,6 +30,12 @@ export class AppFlow {
   private readonly fx = new Fx(by => CHARS[this.state.fighters[by].char].name, by => SKINS[this.state.fighters[by].char].accent);
   private readonly hud = new Hud(this.state);
   private renderTick = 0;
+  private readonly audio = new AudioBus(() => new AudioContext() as unknown as AudioContextLike);
+  private readonly unlockAudio = (): void => {
+    this.audio.unlock();
+    if (this.audio.ensureRunning()) this.removeGestureListeners();
+  };
+  private readonly onVisibility = (): void => { if (document.hidden) this.audio.suspend(); else this.audio.resume(); };
   constructor(element: HTMLCanvasElement) {
     this.canvas = new Canvas(element);
     this.keyboard = new Keyboard(() => { this.boxes = !this.boxes; });
@@ -36,6 +44,9 @@ export class AppFlow {
       if (this.boxes) drawDebug(ctx, this.state, this.previous, alpha, this.camera, true);
       else this.drawScene(ctx, alpha);
     });
+    window.addEventListener('pointerdown', this.unlockAudio);
+    window.addEventListener('keydown', this.unlockAudio);
+    document.addEventListener('visibilitychange', this.onVisibility);
     if (import.meta.env.DEV) window.__kb = { state: this.state, step: (inputs = [0, 0]) => this.advance(inputs) };
     this.loop.start();
   }
@@ -43,10 +54,15 @@ export class AppFlow {
     this.previous = cloneState(this.state);
     step(this.state, inputs);
     this.camera.update(this.state);
-    // Exactly-once event consumption is guarded inside Fx by lastFxFrame.
+    // Exactly-once event consumption: Fx.lastFxFrame guards both FX and SFX (decision 0005).
+    if (this.state.frame !== this.fx.lastFxFrame) for (const c of cuesForFrame(this.previous, this.state)) this.audio.play(c.kind, c.priority, 0);
     this.fx.consume(this.state); this.fx.update(); this.hud.update(this.state);
+    this.audio.setStage(this.state.phase === 'matchEnd' ? null : this.state.stage);
   }
-  // TODO(S10a): play sfx/music from this.state.events here once S10a lands (decision 0005).
+  private removeGestureListeners(): void {
+    window.removeEventListener('pointerdown', this.unlockAudio);
+    window.removeEventListener('keydown', this.unlockAudio);
+  }
   private drawScene(ctx: CanvasRenderingContext2D, alpha: number): void {
     const cam = this.camera, s = this.state;
     const sx = (x: number): number => 320 + x - cam.x + cam.shakeX;
@@ -73,6 +89,9 @@ export class AppFlow {
   }
   dispose(): void {
     this.loop.dispose(); this.keyboard.dispose(); this.canvas.dispose();
+    this.removeGestureListeners();
+    document.removeEventListener('visibilitychange', this.onVisibility);
+    this.audio.dispose();
     if (import.meta.env.DEV && window.__kb?.state === this.state) delete window.__kb;
   }
 }

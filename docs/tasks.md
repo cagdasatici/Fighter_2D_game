@@ -19,7 +19,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S8 | Client shell: canvas, game loop, keyboard, local 2P with debug boxes | S7 | DONE (browser verified; physical keyboard check NOT RUN) | 940b07a | docs/test-results/S8.md |
 | S9 | Puppet renderer + 5 skins + pose library | S8 | DONE (art approved as placeholder 2026-11-04; polish later) | ac2f52f | docs/test-results/S9.md |
 | S10 | FX, HUD, stages + audio integration | S9, S10a | DONE (audio wiring moved to S10a, decision 0005) | b41c2cb | docs/test-results/S10.md |
-| S10a | Standalone synthesized audio + stage music | S0 | BLOCKED (copy contract question below) | | |
+| S10a | Standalone synthesized audio + stage music | S0 | DONE (decision 0006) | PENDING | docs/test-results/S10a.md |
 | S11 | Menus, char select, Versus CPU, Training, CPU AI | S10 | TODO | | |
 | S12a | Server infra copy + FightRoom placeholder (no sim) | S0 | DONE | 5f40b10 | docs/test-results/S12a.md |
 | S12 | Server infrastructure + two-human input authority (S12a + S12b) | S7 | DONE | aacf6a7 | docs/test-results/S12b.md |
@@ -127,9 +127,8 @@ RESOLVED by decision 0004 (same-move hits continue a juggle; liveWireHop vs air 
 **Prerequisites:** S0 DONE. No S9 renderer dependency; no changes to S9 files.
 **Files:** `apps/client/src/audio/{AudioBus.ts,synth.ts,sfx.ts,music.ts}`, `tests/unit/audio.test.ts`, `docs/test-results/S10a.md`, `docs/tasks.md`.
 **Scope (owner-requested):** split the audio module implementation from S10. Implement spec §13 procedural sound recipes, one four-bar bass/drum loop per stage, default music volume 0.25, volume/music controls for later Settings integration, gesture unlock, and resource cleanup. Presentation wiring remains S10; Settings UI remains S11.
-**BLOCKED:** Spec §13 says to copy `AudioBus.ts` and `synth.ts` from battlegrounds unchanged. The reference bus hardcodes one ambient music buffer and its sound API accepts only battlegrounds recipe keys; it cannot play the required stage-specific music and new SFX recipes unchanged. May S10a adapt these two copied files to the Knockout Bash sound keys and stage loops while retaining their tested voice-cap, gain, suspension and disposal behavior?
+RESOLVED by decision 0006
 **Tests:** offline fake-WebAudio tests for unlock, volume/toggle controls, stage loop switching, bounded voices and disposal; recipe tests against §13; required repository checks. Browser listening and physical iPad checks must be recorded NOT RUN unless actually performed.
-**STOP:** resolve the copy-contract question above before implementing code.
 **Commit:** `S10a: add synthesized combat audio and stage music`
 
 ## S11 — Menus, CPU, Training
