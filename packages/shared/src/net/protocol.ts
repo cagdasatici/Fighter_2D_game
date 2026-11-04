@@ -27,8 +27,10 @@ export const InputMsgSchema = z.strictObject({ t: z.literal("in"), f: frame, b: 
 export const AckMsgSchema = z.strictObject({ t: z.literal("ack"), f: frame, h: u32 });
 export const ResyncMsgSchema = z.strictObject({ t: z.literal("resync") });
 export const RematchMsgSchema = z.strictObject({ t: z.literal("rematch") });
+/** Host-only (decision 0008): fill the empty slot with a server CPU before the match starts. */
+export const BotMsgSchema = z.strictObject({ t: z.literal("bot"), char: CharIdSchema, difficulty: z.enum(["easy", "normal", "hard"]) });
 export const ClientMsgSchema = z.discriminatedUnion("t", [
-  PickMsgSchema, ReadyMsgSchema, InputMsgSchema, AckMsgSchema, ResyncMsgSchema, RematchMsgSchema,
+  PickMsgSchema, ReadyMsgSchema, InputMsgSchema, AckMsgSchema, ResyncMsgSchema, RematchMsgSchema, BotMsgSchema,
 ]);
 
 // server -> client

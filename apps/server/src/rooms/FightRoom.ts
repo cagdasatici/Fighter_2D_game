@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { createMatch, cloneState, step, checksum, type MatchState } from "@kb/shared";
+import { createMatch, cloneState, step, checksum, createCpu, cpuInput, type MatchState, type CpuState, type CpuDifficulty } from "@kb/shared";
 import { FixedClock } from "../sim/FixedClock.js";
 import { Room, type Client } from "colyseus";
 import {
@@ -31,11 +31,15 @@ interface Seat {
   char: CharId | null; ready: boolean; connected: boolean; rematch: boolean; snapAt: number;
 }
 
+/** Server-owned CPU seat (spec §11.3). Its CpuState lives outside MatchState. */
+interface BotSeat { slot: 0 | 1; char: CharId; difficulty: CpuDifficulty; cpu: CpuState | null }
+
 export class FightRoom extends Room {
   override maxClients: number = MAX_CLIENTS;
   roomCode = "";
   private seats = new Map<string, Seat>();
   private seatByAuth = new Map<string, string>();
+  private bot: BotSeat | null = null;
 
   private match: MatchState | null = null;
   private startAt = 0;
@@ -76,11 +80,13 @@ export class FightRoom extends Room {
     const session = auth.sessions.getById(hit.sessionId);
     if (!session) throw new Error("AUTH_FAILED");
     if (this.seatByAuth.has(session.id)) throw new Error("SEAT_TAKEN");
+    if (this.seats.size + (this.bot ? 1 : 0) >= MAX_CLIENTS) throw new Error("SEAT_TAKEN");
     return { authId: session.id, displayName: session.displayName };
   }
 
   override onJoin(client: Client, _options: unknown, auth: { authId: string; displayName: string }): void {
     const taken = new Set([...this.seats.values()].map((s) => s.slot));
+    if (this.bot) taken.add(this.bot.slot);
     const slot: 0 | 1 = taken.has(0) ? 1 : 0;
     const now = Date.now();
     this.seats.set(client.sessionId, {
@@ -135,6 +141,7 @@ export class FightRoom extends Room {
       this.pendingInputs.clear();
       this.hashes.clear();
       this.previous = [0, 0];
+      this.bot = null;
     }
     log("info", "player left", { room: this.roomId, slot: seat.slot });
     this.broadcastLobby();
@@ -152,6 +159,7 @@ export class FightRoom extends Room {
     roomDirectory.unregister(this.roomId);
     this.seats.clear();
     this.seatByAuth.clear();
+    this.bot = null;
   }
 
   /** Auth ids and connection state, including reserved seats. */
@@ -168,10 +176,23 @@ export class FightRoom extends Room {
   }
 
   lobby(): LobbyMsg {
-    const slots: LobbySlot[] = [...this.seats.values()]
-      .sort((a, b) => a.slot - b.slot)
-      .map((s) => ({ name: s.name, char: s.char, ready: s.ready, bot: false }));
-    return { t: "lobby", slots };
+    const slots: (LobbySlot & { slot: number })[] = [...this.seats.values()]
+      .map((s) => ({ slot: s.slot, name: s.name, char: s.char, ready: s.ready, bot: false }));
+    if (this.bot) slots.push({ slot: this.bot.slot, name: "CPU", char: this.bot.char, ready: true, bot: true });
+    slots.sort((a, b) => a.slot - b.slot);
+    return { t: "lobby", slots: slots.map(({ slot: _slot, ...rest }) => rest) };
+  }
+
+  private seatCount(): number { return this.seats.size + (this.bot ? 1 : 0); }
+
+  /** Lone human before a match: fill the empty slot with a CPU (or change its char/difficulty). */
+  private setBot(char: CharId, difficulty: CpuDifficulty): void {
+    if (this.match || this.seats.size !== 1) return;
+    const human = [...this.seats.values()][0]!;
+    this.bot = { slot: human.slot === 0 ? 1 : 0, char, difficulty, cpu: null };
+    // onAuth refuses a second human while the CPU holds the slot.
+    this.broadcastLobby();
+    this.maybeStart();
   }
 
   private broadcastLobby(): void { this.emit(this.lobby()); }
@@ -202,10 +223,11 @@ export class FightRoom extends Room {
         if (this.hashes.has(msg.f) && this.hashes.get(msg.f) !== msg.h) this.sendSnap(client, seat);
         break;
       case "resync": this.sendSnap(client, seat); break;
+      case "bot": this.setBot(msg.char, msg.difficulty); break;
       case "rematch":
         if (this.ended) {
           seat.rematch = true;
-          if (this.seats.size === 2 && [...this.seats.values()].every((s) => s.rematch && s.connected)) this.startMatch();
+          if (this.seatCount() === 2 && [...this.seats.values()].every((s) => s.rematch && s.connected)) this.startMatch();
         }
         break;
     }
@@ -215,17 +237,19 @@ export class FightRoom extends Room {
   private emit(msg: ServerMsg): void { this.broadcast(MSG, ServerMsgSchema.parse(msg)); }
 
   private maybeStart(): void {
-    if (this.seats.size === 2 && [...this.seats.values()].every((s) => s.char && s.ready && s.connected)) this.startMatch();
+    if (this.seatCount() === 2 && [...this.seats.values()].every((s) => s.char && s.ready && s.connected)) this.startMatch();
   }
 
   private startMatch(): void {
     const ordered = [...this.seats.values()].sort((a, b) => a.slot - b.slot);
-    const chars: [CharId, CharId] = [ordered[0]!.char!, ordered[1]!.char!];
+    const charAt = (slot: 0 | 1): CharId => this.bot?.slot === slot ? this.bot.char : ordered.find((s) => s.slot === slot)!.char!;
+    const chars: [CharId, CharId] = [charAt(0), charAt(1)];
     let seed = 0;
     while (seed === 0) seed = randomBytes(4).readUInt32LE();
     const stage = chars[0] === "chompa" ? "volcano" : chars[0] === "kaze" || chars[0] === "bao" ? "bamboo" : "rooftop";
     this.seed = seed;
     this.match = createMatch({ chars, stage, seed });
+    if (this.bot) this.bot.cpu = createCpu({ side: this.bot.slot, difficulty: this.bot.difficulty, matchSeed: seed });
     this.startAt = Date.now() + 1500;
     this.ended = false;
     this.pendingInputs.clear(); this.hashes.clear(); this.previous = [0, 0];
@@ -257,7 +281,11 @@ export class FightRoom extends Room {
       const f = state.frame + 1;
       const pair = this.pendingInputs.get(f) ?? [null, null];
       for (const seat of this.seats.values()) if (!seat.connected) pair[seat.slot] = 0;
-      if ((pair[0] === null || pair[1] === null) && now < this.startAt + f * 1000 / 60 + 100) break;
+      const bot = this.bot;
+      const botReady = (i: 0 | 1): boolean => bot?.slot === i && bot.cpu !== null;
+      if (((pair[0] === null && !botReady(0)) || (pair[1] === null && !botReady(1))) && now < this.startAt + f * 1000 / 60 + 100) break;
+      // Exactly once per confirmed frame, on the pre-step state.
+      if (bot?.cpu) pair[bot.slot] = cpuInput(bot.cpu, state);
       const confirmed: [number, number] = [pair[0] ?? this.previous[0], pair[1] ?? this.previous[1]];
       this.pendingInputs.delete(f); this.previous = confirmed;
       step(state, confirmed); batch.push(confirmed);
