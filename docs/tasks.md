@@ -14,7 +14,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S3 | Char data model + base normals + 5 char data files | S1 | DONE (provisional values, see S3 notes) | 371f477 | docs/test-results/S3.md |
 | S4 | Sim core: state, movement, jumps, dashes, pushboxes | S2, S3 | DONE | 76b3f62 | docs/test-results/S4.md |
 | S5 | Attacks, hit/block resolution, combos, throws | S4 | DONE | 8496beb | docs/test-results/S5.md |
-| S6 | Projectiles, specials, special rules per char | S5 | TODO | | |
+| S6 | Projectiles, specials, special rules per char | S5 | DONE (data findings, see S6 notes) | COMMIT_TBD | docs/test-results/S6.md |
 | S7 | Supers, meter, round/match flow, balance guardrails, determinism suite | S6 | TODO | | |
 | S8 | Client shell: canvas, game loop, keyboard, local 2P with debug boxes | S7 | TODO | | |
 | S9 | Puppet renderer + 5 skins + pose library | S8 | TODO | | |
@@ -88,6 +88,10 @@ S12 can run in parallel with S8–S11 (different files).
 **Rule:** special behaviour is triggered by data fields (`projectile`, `grab`, `counter`, `heal`, `lockOnHit`) or by an explicit switch on move id in `specials.ts` — **only** for `smokeStep`, `stampedeRoll`, `overload`, `shurikenFan.H`, `tailSpin` (two-sided box). No other per-id code.
 **Tests:** one projectile limit; clash; egg ground explosion; spark 2 hits with interval; each special does its listed damage on hit and its listed block advantage; DP invuln beats a jump-in that would otherwise hit on frame 3; smokeStep lands behind; bambooCounter LK parries `5HP` but not `2LK`; gulpGrab range 80/65; tailSpin charge required.
 **Commit:** `S6: add projectiles and character specials`
+**Notes (S6 session):** interpretations in docs/test-results/S6.md. Data findings for the owner (data unchanged):
+- jackhammerRise / liveWireHop later hits miss grounded opponents (boxes rise above 110 px); hardHatHop misses crouchers.
+- jadeDragon lands 4 of 5 hits on a grounded opponent (defender frozen in hitstop while it moves on) → 200, not 250.
+- S7 needs a rule for combo scaling on multi-hit supers ("no scaling" totals).
 
 ## S7 — Supers, meter, rounds, determinism
 **Files:** `sim/round.ts`, meter logic in `hit.ts`/`fighter.ts`, `tests/unit/sim-super.test.ts`, `sim-round.test.ts`, `determinism.test.ts`, `balance.test.ts`.

@@ -76,6 +76,8 @@ describe("S5 throw", () => {
     runFrames(s, [[0, T], ...hold(0, 0, 3), [0, T]]);
     expect(p2(s).state).toBe("thrown");
     runFrames(s, hold(0, 0, 30));
+    expect(p2(s).hp).toBe(1000); // S6: command grabs hold 50 frames (GRAB_HOLD_FRAMES)
+    runFrames(s, hold(0, 0, 20));
     expect(p2(s).hp).toBe(1000 - 200);
   });
 });

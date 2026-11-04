@@ -28,6 +28,11 @@ export interface Fighter {
   airJumps: number;
   gravityScale: number;
   wins: number;
+  // S6 special-move bookkeeping (sim/specials.ts).
+  lockLeft: number;                                // lockOnHit: follow-up hits left incl. the final one (0 = no lock)
+  lockTimer: number;                               // frames until the next lock hit
+  rehit: number;                                   // stampedeRoll: frames until the box may hit again
+  spCount: number;                                 // stampedeRoll: contacts so far
 }
 export interface Projectile {
   owner: 0 | 1; kind: string; x: number; y: number; vx: number; vy: number; gravity: number;

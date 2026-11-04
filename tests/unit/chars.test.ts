@@ -84,7 +84,7 @@ describe("character roster data", () => {
     expect(mv("kaze", "5LP").hits[0]?.damage).toBe(25);
     expect(mv("kaze", "5LP").startup).toBe(3);
     expect(mv("chompa", "gulpGrab.H").grab?.range).toBe(6500);
-    expect(mv("bao", "bambooCounter.L").counter).toEqual({ from: 4, to: 21, damage: 130 });
+    expect(mv("bao", "bambooCounter.L").counter).toEqual({ from: 4, to: 21, damage: 130, levels: ["mid", "overhead"] });
     expect(CHARS.kaze.airJumpMax).toBe(1);
     expect(CHARS.bolt.airJumpMax).toBe(0);
     expect(mv("volt", "j.HK").gravityScale).toBe(50);
