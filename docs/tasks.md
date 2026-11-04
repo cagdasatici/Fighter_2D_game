@@ -26,7 +26,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S12b | Two-human input-authoritative FightRoom | S7, S12a | DONE | aacf6a7 | docs/test-results/S12b.md |
 | S12c | Server CPU seats | S11, S12b | DONE | f097ce7 | docs/test-results/S12c.md |
 | S13 | Client rollback netcode + online flow | S11, S12 | DONE | b828347 | docs/test-results/S13.md |
-| S14 | Touch controls + gamepad + iPad PWA + play script | S13 | IMPLEMENTED – DEVICE CHECK PENDING | PENDING | docs/test-results/S14.md |
+| S14 | Touch controls + gamepad + iPad PWA + play script | S13 | IMPLEMENTED – DEVICE CHECK PENDING | e1abc90 | docs/test-results/S14.md |
 | S15 | Browser tests, polish pass, release checklist | S14 | TODO | | |
 
 S12 can run in parallel with S8–S11 (different files).
