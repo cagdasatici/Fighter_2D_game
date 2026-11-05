@@ -120,7 +120,7 @@ function contact(s: MatchState, p: Projectile): void {
     d.hp = hp;
     d.state = "blockstun"; d.stateFrame = 1; d.stun = def.blockstun;
     setPushbackDir(d, dir, def.pushback);
-    addMeter(o, idiv(def.meterOnHit, 2));
+    addMeter(o, idiv(def.meterOnHit * 3, 4));
     event(s, "block", p.owner, d, strength);
     return;
   }
@@ -129,7 +129,7 @@ function contact(s: MatchState, p: Projectile): void {
   if (counter) dmg = idiv(dmg * 12, 10);
   d.hp -= dmg; if (d.hp < 0) d.hp = 0;
   d.comboHits++;
-  addMeter(o, def.meterOnHit);
+  addMeter(o, idiv(def.meterOnHit * 3, 2));
   addMeter(d, idiv(dmg * METER_DEFENDER_PERCENT, 100));
   if (d.airborne || kd) {
     toJuggle(d, JUGGLE_FALL_VX * dir, JUGGLE_FALL_VY);

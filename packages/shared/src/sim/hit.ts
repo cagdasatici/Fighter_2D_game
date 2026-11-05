@@ -171,7 +171,7 @@ function applyContact(s: MatchState, i: 0 | 1, p: Pending): void {
     d.state = "blockstun"; d.stateFrame = 1; d.stun = h.blockstun;
     d.crouching = h.level === "low" || numpad(inputAt(d, 0), d.facing) <= 3;
     setPushback(a, d, h.pushback);
-    addMeter(a, idiv(h.meterOnHit, 2));
+    addMeter(a, idiv(h.meterOnHit * 3, 4));
     event(s, "block", i, d, strength);
     return;
   }
@@ -179,7 +179,7 @@ function applyContact(s: MatchState, i: 0 | 1, p: Pending): void {
   if (p.counter) dmg = idiv(dmg * 12, 10);
   d.hp -= dmg; if (d.hp < 0) d.hp = 0;
   d.comboHits++;
-  addMeter(a, h.meterOnHit);
+  addMeter(a, idiv(h.meterOnHit * 3, 2));
   addMeter(d, idiv(dmg * METER_DEFENDER_PERCENT, 100));
   if (d.airborne || h.knockdown || h.launch) {
     toJuggle(d, (h.launch ? h.launch.vx : JUGGLE_FALL_VX) * a.facing, h.launch ? h.launch.vy : JUGGLE_FALL_VY);

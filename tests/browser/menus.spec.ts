@@ -33,7 +33,7 @@ test("menus: back/escape, settings persistence + reset, how to play tabs, stage 
 
   await page.getByRole("button", { name: "How to Play" }).click();
   await page.getByRole("tab", { name: "Touch" }).click();
-  await expect(page.getByText("SP SP (full meter)").first()).toBeVisible();
+  await expect(page.getByText("SUPER", { exact: true }).first()).toBeVisible();
   await shot(page, "howto-touch");
   await page.getByRole("tab", { name: "Moves" }).click();
   await expect(page.getByText("Rivet Shot").first()).toBeVisible();

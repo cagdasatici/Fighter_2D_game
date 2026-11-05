@@ -5,13 +5,13 @@ import { button, el, menuNav, screen } from './dom.js';
  * centre offset from the bottom-right corner in CSS px, so it survives rotation. Edits that leave the right half,
  * the viewport, or overlap another button are rejected; an unsafe stored layout falls back to the default.
  */
-export type TouchButtonId = 'LP' | 'HP' | 'LK' | 'HK' | 'SP';
-export const TOUCH_BUTTONS: readonly TouchButtonId[] = ['LP', 'HP', 'LK', 'HK', 'SP'];
-export const BUTTON_PX: Readonly<Record<TouchButtonId, number>> = { LP: 72, HP: 72, LK: 72, HK: 72, SP: 64 };
+export type TouchButtonId = 'LP' | 'HP' | 'LK' | 'HK' | 'SP' | 'SU';
+export const TOUCH_BUTTONS: readonly TouchButtonId[] = ['LP', 'HP', 'LK', 'HK', 'SP', 'SU'];
+export const BUTTON_PX: Readonly<Record<TouchButtonId, number>> = { LP: 72, HP: 72, LK: 72, HK: 72, SP: 64, SU: 64 };
 /** Offsets: dx = px left of the right edge, dy = px above the bottom edge (button centres). */
 export type TouchLayout = Record<TouchButtonId, { dx: number; dy: number }>;
 export const DEFAULT_LAYOUT: TouchLayout = {
-  LP: { dx: 140, dy: 140 }, HP: { dx: 56, dy: 140 }, LK: { dx: 140, dy: 56 }, HK: { dx: 56, dy: 56 }, SP: { dx: 98, dy: 220 },
+  LP: { dx: 140, dy: 140 }, HP: { dx: 56, dy: 140 }, LK: { dx: 140, dy: 56 }, HK: { dx: 56, dy: 56 }, SP: { dx: 98, dy: 220 }, SU: { dx: 162, dy: 220 },
 };
 const STORAGE_KEY = 'kb.touchLayout.v1';
 

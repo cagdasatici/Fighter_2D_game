@@ -55,7 +55,7 @@ describe("TXT menus", () => {
     const c = easySpecials("chompa");
     expect(c).toHaveLength(5);
     expect(c[3]![1]).toMatch(/after holding/);
-    expect(c[4]![0]).toBe("SP SP (full meter)");
+    expect(c[4]![0]).toBe("SUPER");
     for (const [, name] of easySpecials("bolt")) expect(name).not.toMatch(/\./); // display names, not ids like rivetShot.H
   });
 });

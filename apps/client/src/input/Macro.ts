@@ -73,27 +73,25 @@ export function buildSuper(char: CharId, facing: 1 | -1): InputByte[] {
   return toBytes(SUPER_SEQ, SP_TABLE[char].superButton, facing);
 }
 
-export const DOUBLE_SP_FRAMES = 20;
 export interface SpContext { char: CharId; facing: 1 | -1; charged: boolean; meterFull: boolean }
 
-/** Plays macros into the input stream, one byte per sampled frame. A second SP within 20 frames with full meter → super. */
+/** Display name of the move `SP` triggers for a stick direction (touch label, decision 0014). */
+export function spLabel(char: CharId, dir: SpDir, charged: boolean, name: (move: string) => string): string {
+  return name(macroEntry(char, dir, charged).move);
+}
+
+/**
+ * One per local player, shared by keyboard, pad and touch (decision 0014). Plays macros into the input stream,
+ * one byte per sampled frame. SU plays the super only with a full meter; otherwise it is ignored (no queueing).
+ */
 export class MacroPlayer {
   private queue: InputByte[] = [];
-  private sinceSp = Number.MAX_SAFE_INTEGER;
-  /** Call once per frame. `spPressed` = SP went down since the last frame. */
-  next(live: InputByte, spPressed: boolean, ctx: SpContext | null): InputByte {
-    this.sinceSp++;
-    if (spPressed && ctx) {
-      if (this.sinceSp <= DOUBLE_SP_FRAMES && ctx.meterFull) {
-        this.queue = buildSuper(ctx.char, ctx.facing);
-        this.sinceSp = Number.MAX_SAFE_INTEGER;
-      } else {
-        this.queue = buildMacro(ctx.char, spDirection(live, ctx.facing), ctx.facing, ctx.charged);
-        this.sinceSp = 0;
-      }
-    }
+  /** Call once per frame. `sp`/`su` = that button went down since the last frame. */
+  next(live: InputByte, sp: boolean, su: boolean, ctx: SpContext | null): InputByte {
+    if (ctx && su && ctx.meterFull) this.queue = buildSuper(ctx.char, ctx.facing);
+    else if (ctx && sp) this.queue = buildMacro(ctx.char, spDirection(live, ctx.facing), ctx.facing, ctx.charged);
     return this.queue.shift() ?? live;
   }
   get playing(): boolean { return this.queue.length > 0; }
-  reset(): void { this.queue = []; this.sinceSp = Number.MAX_SAFE_INTEGER; }
+  reset(): void { this.queue = []; }
 }

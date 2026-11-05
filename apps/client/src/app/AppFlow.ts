@@ -1,6 +1,7 @@
 import { CHARS, METER_MAX, PX, chargeReady, cleanSocd, cloneState, createCpu, createMatch, cpuInput, getMove, step, type CharId, type CpuState, type Fighter, type InputByte, type MatchState, type StageId } from '@kb/shared';
 import { Keyboard } from '../input/Keyboard.js';
 import { Touch } from '../input/Touch.js';
+import { MacroPlayer, type SpContext } from '../input/Macro.js';
 import { Gamepad } from '../input/Gamepad.js';
 import { loadLayout, showLayoutEdit } from '../ui/LayoutEdit.js';
 import { Canvas, GROUND, HEIGHT, WIDTH } from '../render/Canvas.js';
@@ -51,6 +52,7 @@ export class AppFlow {
   private readonly camera = new Camera();
   private readonly keyboard: Keyboard;
   private readonly touch: Touch;
+  private readonly macros: [MacroPlayer, MacroPlayer] = [new MacroPlayer(), new MacroPlayer()];
   private readonly gamepad: Gamepad;
   private readonly loop: GameLoop;
   private readonly ui: HTMLElement;
@@ -87,10 +89,8 @@ export class AppFlow {
     this.ui.className = 'kb-ui';
     document.body.append(this.ui);
     this.keyboard = new Keyboard(this.settings.keys, () => { this.boxes = !this.boxes; }, () => this.togglePause());
-    this.touch = new Touch(loadLayout(), () => {
-      const side = this.net?.rb?.you ?? 0, f = this.state.fighters[side];
-      return { char: f.char, facing: f.facing, charged: chargeReady(f), meterFull: f.meter >= METER_MAX };
-    }, () => this.togglePause());
+    this.touch = new Touch(loadLayout(), () => this.spContext(this.net?.rb?.you ?? 0),
+      (ctx, move) => getMove(ctx.char, move)?.name ?? move, () => this.togglePause());
     this.gamepad = new Gamepad(() => this.togglePause());
     this.applySettings();
     this.loop = new GameLoop(() => this.tick(), alpha => this.render(alpha), () => this.fps?.update());
@@ -141,7 +141,18 @@ export class AppFlow {
   /** P1/P2 bytes from keyboard, gamepads and (P1 only) touch, merged then SOCD-cleaned. */
   private readInputs(): [InputByte, InputByte] {
     const k = this.keyboard.read(), g = this.gamepad.read();
-    return [cleanSocd(k[0] | g[0] | this.touch.read()), cleanSocd(k[1] | g[1])];
+    const ke = this.keyboard.takeEdges(), ge = this.gamepad.takeEdges(), te = this.touch.takeEdges();
+    const live0 = cleanSocd(k[0] | g[0] | this.touch.read()), live1 = cleanSocd(k[1] | g[1]);
+    // One MacroPlayer per local player; online the local player always occupies slot 0 (decision 0014).
+    const ctx0 = this.spContext(this.net?.rb?.you ?? 0), ctx1 = this.mode === 'local' ? this.spContext(1) : null;
+    return [
+      this.macros[0].next(live0, ke[0].sp || ge[0].sp || te.sp, ke[0].su || ge[0].su || te.su, ctx0),
+      this.macros[1].next(live1, ke[1].sp || ge[1].sp, ke[1].su || ge[1].su, ctx1),
+    ];
+  }
+  private spContext(side: 0 | 1): SpContext {
+    const f = this.state.fighters[side];
+    return { char: f.char, facing: f.facing, charged: chargeReady(f), meterFull: f.meter >= METER_MAX };
   }
   private setScene(scene: Scene): void { this.scene = scene; this.loop.resetPerf(); this.touch.setActive(scene === 'fight'); }
   private toSelect(): void {
@@ -156,7 +167,7 @@ export class AppFlow {
     this.setScene('vs'); this.sceneFrame = 0;
     this.show(root => showVs(root, this.chars));
   }
-  private enterFight(): void { this.setScene('fight'); this.paused = false; this.sceneFrame = 0; this.hideUi(); this.keyboard.setKeys(this.settings.keys); }
+  private enterFight(): void { this.macros[0].reset(); this.macros[1].reset(); this.setScene('fight'); this.paused = false; this.sceneFrame = 0; this.hideUi(); this.keyboard.setKeys(this.settings.keys); }
   private toResults(): void {
     this.setScene('results'); this.sceneFrame = 0; this.audio.setStage(null);
     this.show(root => showResults(root, this.state, this.mode === 'cpu' ? 1 : null, c => {
@@ -319,6 +330,7 @@ export class AppFlow {
 
   private render(alpha: number): void {
     const ctx = this.canvas.begin();
+    if (this.scene === 'fight') this.touch.refresh();
     this.fx.lowFx = this.loop.lowFx;
     if (this.scene === 'vs') { drawVs(ctx, this.chars, this.stage, this.sceneFrame); return; }
     if (this.scene === 'results') { drawResults(ctx, this.state, this.renderTick++); return; }

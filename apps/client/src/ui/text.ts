@@ -11,9 +11,9 @@ export const DIFFICULTY_INFO: Readonly<Record<CpuDifficulty, { name: string; blu
   hard: { name: 'Hard', blurb: 'Quick reactions, blocks most attacks, combos.' },
 };
 
-export type ActionId = 'up' | 'down' | 'left' | 'right' | 'LP' | 'HP' | 'LK' | 'HK';
+export type ActionId = 'up' | 'down' | 'left' | 'right' | 'LP' | 'HP' | 'LK' | 'HK' | 'SP' | 'SU';
 export const ACTION_NAMES: Readonly<Record<ActionId, string>> = {
-  up: 'Up', down: 'Down', left: 'Left', right: 'Right', LP: 'Light Punch', HP: 'Heavy Punch', LK: 'Light Kick', HK: 'Heavy Kick',
+  up: 'Up', down: 'Down', left: 'Left', right: 'Right', LP: 'Light Punch', HP: 'Heavy Punch', LK: 'Light Kick', HK: 'Heavy Kick', SP: 'Special (SP)', SU: 'Super',
 };
 
 const KEY_SPECIAL: Readonly<Record<string, string>> = {

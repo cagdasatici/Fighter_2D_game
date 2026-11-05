@@ -191,7 +191,7 @@ A motion is a sequence of numpad directions that must appear **in order** in the
 
 **Priority on a given frame** (first match wins): super (`dqcf`) → `spin` → `dp` → `qcf`/`qcb` (most recent final step wins; tie → `qcf`) → `charge` → `dd` → throw (LP+LK pressed within 2 frames of each other) → command normal → normal.
 
-**Easy-special button (touch only, §12.3):** the touch layer converts `SP + direction` into the full motion over successive frames in the input stream, so the sim never knows about it.
+**One-button specials and super (all sources, decision 0014):** one client `MacroPlayer` per local player converts `SP + direction` (keyboard `SP` key, gamepad RB, touch `SP`) into the full motion over successive frames in the input stream, so the sim never knows about it. `SU` (keyboard key, gamepad RT, touch `SUPER`) plays the super motion only when the meter is full, otherwise it is ignored. The double-SP gesture no longer exists. Defaults: P1 SP `L`, SU `O`; P2 SP `Num 6`, SU `Num 3`. Meter gain is x1.5 (whiff special 15, defender 60 %, attacker hit x3/2, block x3/4).
 
 ---
 
@@ -580,7 +580,7 @@ D-pad or left stick (deadzone 0.4, 8-way by angle sectors of 45°). Face buttons
 
 ### 12.3 Touch (iPad; `input/Touch.ts`, port PointerRouter ideas from battlegrounds)
 - Left half: floating 8-way stick (appears where the thumb lands, radius 60 css px, deadzone 14 px, 45° sectors).
-- Right side: 2×2 buttons (LP HP / LK HK) 72 css px, plus `SP` (easy special) 64 px above them.
+- Right side: 2×2 buttons (LP HP / LK HK) 72 css px, plus `SP` (special) 64 px above them and `SUPER` 64 px left of `SP` (gold when the meter is full).
 - `SP` + stick direction at the moment of press emits a **macro** into the input stream over the next frames (uses the facing at the press frame), with the strongest button of the character's mapping:
   | Stick at press | Macro |
   |---|---|

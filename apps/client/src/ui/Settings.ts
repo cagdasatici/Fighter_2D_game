@@ -2,13 +2,13 @@ import { CPU_DIFFICULTIES, DOWN, HK, HP, LEFT, LK, LP, RIGHT, UP, type CpuDiffic
 import { button, el, focusFirst, menuNav, screen } from './dom.js';
 import { ACTION_NAMES, DIFFICULTY_INFO, keyLabel } from './text.js';
 
-export const ACTIONS = ['up', 'down', 'left', 'right', 'LP', 'HP', 'LK', 'HK'] as const;
+export const ACTIONS = ['up', 'down', 'left', 'right', 'LP', 'HP', 'LK', 'HK', 'SP', 'SU'] as const;
 export type Action = typeof ACTIONS[number];
 export type KeyMap = Record<Action, string>;
-export const ACTION_BITS: Readonly<Record<Action, number>> = { up: UP, down: DOWN, left: LEFT, right: RIGHT, LP, HP, LK, HK };
+export const ACTION_BITS: Readonly<Record<Action, number>> = { up: UP, down: DOWN, left: LEFT, right: RIGHT, LP, HP, LK, HK, SP: 0, SU: 0 };
 export const DEFAULT_KEYS: readonly [KeyMap, KeyMap] = [
-  { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', LP: 'KeyU', HP: 'KeyI', LK: 'KeyJ', HK: 'KeyK' },
-  { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', LP: 'Numpad4', HP: 'Numpad5', LK: 'Numpad1', HK: 'Numpad2' },
+  { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', LP: 'KeyU', HP: 'KeyI', LK: 'KeyJ', HK: 'KeyK', SP: 'KeyL', SU: 'KeyO' },
+  { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', LP: 'Numpad4', HP: 'Numpad5', LK: 'Numpad1', HK: 'Numpad2', SP: 'Numpad6', SU: 'Numpad3' },
 ];
 /** Keys reserved by the shell; never bindable. */
 export const RESERVED_KEYS = ['Escape', 'F1', 'Tab', 'Enter'];

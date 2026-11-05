@@ -1,10 +1,10 @@
 import { DOWN, HK, HP, LEFT, LK, LP, RIGHT, UP, cleanSocd, type InputByte } from '@kb/shared';
 import { BUTTON_PX, TOUCH_BUTTONS, circles, effectiveLayout, type TouchButtonId, type TouchLayout } from '../ui/LayoutEdit.js';
-import { MacroPlayer, type SpContext } from './Macro.js';
+import { spDirection, macroEntry, type SpContext } from './Macro.js';
 
 export const STICK_RADIUS = 60;
 export const STICK_DEADZONE = 14;
-const BITS: Readonly<Record<Exclude<TouchButtonId, 'SP'>, number>> = { LP, HP, LK, HK };
+const BITS: Readonly<Record<Exclude<TouchButtonId, 'SP' | 'SU'>, number>> = { LP, HP, LK, HK };
 // 8 sectors of 45°, starting at "right" and going counter-clockwise (screen y grows downward).
 const SECTORS = [RIGHT, RIGHT | UP, UP, LEFT | UP, LEFT, LEFT | DOWN, DOWN, RIGHT | DOWN];
 
@@ -26,12 +26,12 @@ export class Touch {
   private readonly stickKnob: HTMLElement;
   private readonly nodes = new Map<TouchButtonId, HTMLElement>();
   private readonly pointers = new Map<number, { kind: 'stick'; ox: number; oy: number; x: number; y: number } | { kind: 'button'; id: TouchButtonId }>();
-  private readonly macro = new MacroPlayer();
   private spLatched = false;
+  private suLatched = false;
   private active = false;
   private used = false;
   private layout: TouchLayout;
-  constructor(layout: TouchLayout, private readonly context: () => SpContext | null, private readonly onPause: () => void) {
+  constructor(layout: TouchLayout, private readonly context: () => SpContext | null, private readonly labelOf: (ctx: SpContext, move: string) => string, private readonly onPause: () => void) {
     this.layout = layout;
     this.root = document.createElement('div');
     this.root.className = 'kb-touch';
@@ -42,7 +42,7 @@ export class Touch {
     this.root.append(this.stickBase);
     for (const id of TOUCH_BUTTONS) {
       const n = document.createElement('div');
-      n.className = `kb-tbtn kb-tbtn-${id}`; n.textContent = id;
+      n.className = `kb-tbtn kb-tbtn-${id}`; n.textContent = id === 'SU' ? 'SUPER' : id;
       n.style.width = n.style.height = `${BUTTON_PX[id]}px`;
       this.nodes.set(id, n); this.root.append(n);
     }
@@ -93,6 +93,7 @@ export class Touch {
     if (id) {
       this.pointers.set(e.pointerId, { kind: 'button', id });
       if (id === 'SP') this.spLatched = true;
+      if (id === 'SU') this.suLatched = true;
       this.nodes.get(id)?.classList.add('kb-down');
     } else if (e.clientX < window.innerWidth / 2 && ![...this.pointers.values()].some(p => p.kind === 'stick')) {
       this.pointers.set(e.pointerId, { kind: 'stick', ox: e.clientX, oy: e.clientY, x: e.clientX, y: e.clientY });
@@ -120,7 +121,7 @@ export class Touch {
     else if (![...this.pointers.values()].some(q => q.kind === 'button' && q.id === p.id)) this.nodes.get(p.id)?.classList.remove('kb-down');
   };
   private clear = (): void => {
-    this.pointers.clear(); this.spLatched = false; this.macro.reset();
+    this.pointers.clear(); this.spLatched = false; this.suLatched = false;
     this.stickBase.hidden = true;
     for (const n of this.nodes.values()) n.classList.remove('kb-down');
   };
@@ -128,16 +129,28 @@ export class Touch {
     let b = 0;
     for (const p of this.pointers.values()) {
       if (p.kind === 'stick') b |= stickBits(p.x - p.ox, p.y - p.oy);
-      else if (p.id !== 'SP') b |= BITS[p.id];
+      else if (p.id !== 'SP' && p.id !== 'SU') b |= BITS[p.id];
     }
     return cleanSocd(b);
   }
-  /** Player-1 byte for this frame (call once per sampled frame). */
-  read(): InputByte {
-    if (!this.active) return 0;
-    const sp = this.spLatched;
-    this.spLatched = false;
-    return this.macro.next(this.live(), sp, sp ? this.context() : null);
+  /** Player-1 stick/button bits (SP/SU excluded) for this frame. */
+  read(): InputByte { return this.active ? this.live() : 0; }
+  /** SP/SU press edges since the last call. */
+  takeEdges(): { sp: boolean; su: boolean } {
+    const e = { sp: this.active && this.spLatched, su: this.active && this.suLatched };
+    this.spLatched = false; this.suLatched = false;
+    return e;
+  }
+  /** Refresh the SP move label and the SUPER glow (call each rendered frame). */
+  refresh(): void {
+    const ctx = this.context();
+    const sp = this.nodes.get('SP'), su = this.nodes.get('SU');
+    if (su) { su.classList.toggle('kb-ready', !!ctx?.meterFull); su.classList.toggle('kb-off', !ctx?.meterFull); }
+    if (sp && ctx) {
+      const dir = spDirection(this.live(), ctx.facing);
+      const text = this.labelOf(ctx, macroEntry(ctx.char, dir, ctx.charged).move);
+      if (sp.dataset.label !== text) { sp.dataset.label = text; sp.title = text; }
+    }
   }
   dispose(): void {
     this.root.removeEventListener('pointerdown', this.down);

@@ -78,6 +78,10 @@
 .kb-tbtn { position: absolute; box-sizing: border-box; border-radius: 50%; border: 3px solid #1b1b2a; background: rgba(255, 216, 74, 0.55);
   color: #1b1b2a; font: 700 18px system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; }
 .kb-tbtn-SP { background: rgba(74, 168, 255, 0.6); color: #fff; }
+.kb-tbtn-SP { position: absolute; }
+.kb-tbtn-SP::after { content: attr(data-label); position: absolute; top: -18px; left: 50%; transform: translateX(-50%); white-space: nowrap; font: 600 11px system-ui, sans-serif; color: #fff; text-shadow: 0 1px 2px #000; pointer-events: none; }
+.kb-tbtn-SU { background: rgba(120, 120, 130, 0.45); color: #ddd; font-size: 12px; }
+.kb-tbtn-SU.kb-ready { background: rgba(255, 200, 40, 0.95); color: #1b1b2a; box-shadow: 0 0 14px 4px rgba(255, 210, 60, 0.8); }
 .kb-tbtn.kb-down { background: rgba(255, 241, 168, 0.95); }
 .kb-stick { position: absolute; width: 120px; height: 120px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.5); background: rgba(0, 0, 0, 0.2); pointer-events: none; }
 .kb-stick[hidden] { display: none; }

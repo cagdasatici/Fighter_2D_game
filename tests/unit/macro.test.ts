@@ -70,20 +70,28 @@ describe("S14 macro player", () => {
     expect(spDirection(LEFT, 1)).toBe("back");
     expect(spDirection(RIGHT, -1)).toBe("back");
   });
-  it("plays one byte per frame then returns live input; double SP with full meter plays the super", () => {
+  it("plays one byte per frame then returns live input", () => {
     const p = new MacroPlayer();
     const ctx = { char: "bolt" as const, facing: 1 as const, charged: false, meterFull: true };
-    const out = [p.next(0, true, ctx), p.next(0, false, ctx), p.next(0, false, ctx), p.next(7, false, ctx)];
+    const out = [p.next(0, true, false, ctx), p.next(0, false, false, ctx), p.next(0, false, false, ctx), p.next(7, false, false, ctx)];
     expect(out).toEqual(buildMacro("bolt", "neutral", 1, false).concat([7]));
     expect(out[2]! & HP).toBe(HP);
-    const sup = [p.next(0, true, ctx)];
-    while (p.playing) sup.push(p.next(0, false, ctx));
-    expect(sup).toEqual(buildSuper("bolt", 1));
   });
-  it("double SP without full meter restarts the normal macro", () => {
+  it("SU with a full meter plays the super; with a short meter it emits nothing and does not queue", () => {
     const p = new MacroPlayer();
-    const ctx = { char: "bolt" as const, facing: 1 as const, charged: false, meterFull: false };
-    p.next(0, true, ctx);
-    expect(p.next(0, true, ctx)).toBe(buildMacro("bolt", "neutral", 1, false)[0]);
+    const full = { char: "bolt" as const, facing: 1 as const, charged: false, meterFull: true };
+    const sup = [p.next(0, false, true, full)];
+    while (p.playing) sup.push(p.next(0, false, false, full));
+    expect(sup).toEqual(buildSuper("bolt", 1));
+    const q = new MacroPlayer();
+    expect(q.next(0, false, true, { ...full, meterFull: false })).toBe(0);
+    expect(q.playing).toBe(false);
+    expect(q.next(0, false, false, { ...full, meterFull: false })).toBe(0);
+  });
+  it("a second SP press restarts the normal macro (no double-SP super)", () => {
+    const p = new MacroPlayer();
+    const ctx = { char: "bolt" as const, facing: 1 as const, charged: false, meterFull: true };
+    p.next(0, true, false, ctx);
+    expect(p.next(0, true, false, ctx)).toBe(buildMacro("bolt", "neutral", 1, false)[0]);
   });
 });

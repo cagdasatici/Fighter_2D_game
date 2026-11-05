@@ -56,10 +56,10 @@ describe("S5 combo", () => {
     expect(p2(s).state).toBe("idle");
     expect(p2(s).comboHits).toBe(0);
   });
-  it("meter gain: attacker +meterOnHit, defender 40% of damage; block gives half", () => {
+  it("meter gain: attacker +meterOnHit, defender 60% of damage; block gives half", () => {
     const s = runFrames(at(50), [[LP, 0], ...hold(0, 0, 4)]);
-    expect([p1(s).meter, p2(s).meter]).toEqual([20, 12]);
+    expect([p1(s).meter, p2(s).meter]).toEqual([30, 18]);
     const b = runFrames(at(50), [[LP, RIGHT], ...hold(0, RIGHT, 4)]);
-    expect([p1(b).meter, p2(b).meter]).toEqual([10, 0]);
+    expect([p1(b).meter, p2(b).meter]).toEqual([15, 0]);
   });
 });
