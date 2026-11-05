@@ -2,7 +2,10 @@ import type { FxEvent, MatchState } from '@kb/shared';
 import { PRIORITY_IMPACT, PRIORITY_MAJOR, PRIORITY_OTHER, type Priority, type SoundKind } from './synth.js';
 
 /** One sound cue for a simulated frame. Presentation only; never mutates state. */
-export interface Cue { kind: SoundKind; priority: Priority }
+export interface Cue { kind: SoundKind; priority: Priority; /** Playback pitch multiplier (combo escalation). Absent = 1. */ rate?: number }
+
+/** +5 % pitch per combo hit beyond the first, capped at +30 %. */
+export function comboRate(hits: number): number { return 1 + Math.min(0.3, 0.05 * Math.max(0, hits - 1)); }
 
 const HIT_BY_STRENGTH: readonly SoundKind[] = ['hitL', 'hitM', 'hitH'];
 
@@ -32,7 +35,16 @@ export function cueForEvent(e: FxEvent): Cue | null {
 export function cuesForFrame(prev: MatchState, cur: MatchState): Cue[] {
   const out: Cue[] = [];
   const evKinds = new Set(cur.events.map((e) => e.kind));
-  for (const e of cur.events) { const c = cueForEvent(e); if (c) out.push(c); }
+  for (const e of cur.events) {
+    const c = cueForEvent(e);
+    if (!c) continue;
+    if (e.kind === 'hit' || e.kind === 'counter' || e.kind === 'throw') {
+      const rate = comboRate(cur.fighters[e.by === 0 ? 1 : 0].comboHits);
+      if (rate !== 1) c.rate = rate;
+      out.push(c);
+      if (e.strength === 2) out.push({ kind: 'thump', priority: PRIORITY_IMPACT, ...(rate !== 1 ? { rate } : {}) });
+    } else out.push(c);
+  }
   for (const i of [0, 1] as const) {
     const a = prev.fighters[i], b = cur.fighters[i];
     if (a.state === b.state) continue;

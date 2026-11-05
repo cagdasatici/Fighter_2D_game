@@ -15,11 +15,11 @@ export const RESERVED_KEYS = ['Escape', 'F1', 'Tab', 'Enter'];
 
 export interface Settings {
   effectsVolume: number; musicVolume: number; musicOn: boolean;
-  difficulty: CpuDifficulty; debugBoxes: boolean; keys: [KeyMap, KeyMap];
+  difficulty: CpuDifficulty; debugBoxes: boolean; screenShake: boolean; reducedFx: boolean; keys: [KeyMap, KeyMap];
 }
 const STORAGE_KEY = 'kb.settings.v1';
 export function defaultSettings(): Settings {
-  return { effectsVolume: 1, musicVolume: 0.25, musicOn: true, difficulty: 'normal', debugBoxes: false,
+  return { effectsVolume: 1, musicVolume: 0.25, musicOn: true, difficulty: 'normal', debugBoxes: false, screenShake: true, reducedFx: false,
     keys: [{ ...DEFAULT_KEYS[0] }, { ...DEFAULT_KEYS[1] }] };
 }
 
@@ -40,7 +40,7 @@ export function parseSettings(raw: unknown): Settings {
     effectsVolume: unit(r.effectsVolume, d.effectsVolume), musicVolume: unit(r.musicVolume, d.musicVolume),
     musicOn: typeof r.musicOn === 'boolean' ? r.musicOn : d.musicOn,
     difficulty: CPU_DIFFICULTIES.includes(r.difficulty as CpuDifficulty) ? (r.difficulty as CpuDifficulty) : d.difficulty,
-    debugBoxes: r.debugBoxes === true, keys: [map(0), map(1)],
+    debugBoxes: r.debugBoxes === true, screenShake: typeof r.screenShake === 'boolean' ? r.screenShake : d.screenShake, reducedFx: r.reducedFx === true, keys: [map(0), map(1)],
   };
 }
 export function loadSettings(): Settings {
@@ -134,6 +134,10 @@ export function showSettings(root: HTMLElement, s: Settings, apply: () => void, 
     check('Music', () => s.musicOn, v => { s.musicOn = v; }),
     slider('Music volume', () => s.musicVolume, v => { s.musicVolume = v; }),
   ];
+  const display = [
+    check('Screen shake', () => s.screenShake, v => { s.screenShake = v; }),
+    check('Reduced effects', () => s.reducedFx, v => { s.reducedFx = v; }),
+  ];
   const gameplay = [el('label', { class: 'kb-row' }, [el('span', {}, ['CPU difficulty']), diff]), diffNote];
   const controls = [keyTable, keyStatus, el('div', { class: 'kb-actions' }, [
     button('Reset keys', () => { s.keys = [{ ...DEFAULT_KEYS[0] }, { ...DEFAULT_KEYS[1] }]; changed(); drawKeys(); keyStatus.textContent = 'Keys reset to defaults.'; }),
@@ -141,6 +145,7 @@ export function showSettings(root: HTMLElement, s: Settings, apply: () => void, 
   const sections: HTMLElement[] = [
     el('fieldset', { class: 'kb-section' }, [el('legend', {}, ['Audio']), ...audio]),
     el('fieldset', { class: 'kb-section' }, [el('legend', {}, ['Gameplay']), ...gameplay]),
+    el('fieldset', { class: 'kb-section' }, [el('legend', {}, ['Effects']), ...display]),
     el('fieldset', { class: 'kb-section' }, [el('legend', {}, ['Controls']), ...controls]),
   ];
   if (import.meta.env.DEV) sections.push(el('fieldset', { class: 'kb-section' }, [el('legend', {}, ['Display (dev build)']),

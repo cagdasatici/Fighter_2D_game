@@ -30,7 +30,12 @@ const TOP_H = 56, BOTTOM_Y = 316, BOTTOM_H = 44;
 const BAR_W = 250, BAR_H = 16, METER_W = 170, METER_H = 10;
 const TRAIL_DELAY = 30, TRAIL_DRAIN = 4, COMBO_FADE = 60;
 
-interface Side { trail: number; lastHp: number; idle: number; combo: number; comboFade: number }
+interface Side { trail: number; lastHp: number; idle: number; combo: number; comboFade: number; pop: number; ready: number; wasFull: boolean }
+/** Combo colour heats white -> gold (3+) -> red (6+). */
+export function comboColor(hits: number): string { return hits >= 6 ? '#ff4a3a' : hits >= 3 ? '#ffd84a' : '#ffffff'; }
+/** Pop scale 1.4 -> 1 over POP_FRAMES after each new hit. */
+export const POP_FRAMES = 10;
+export function popScale(pop: number): number { return 1 + 0.4 * Math.max(0, pop) / POP_FRAMES; }
 
 export class Hud {
   private readonly sides: [Side, Side];
@@ -42,7 +47,7 @@ export class Hud {
     this.chars = [state.fighters[0].char, state.fighters[1].char];
     this.topKey = `hud.top.${this.chars[0]}.${this.chars[1]}`;
     this.bottomKey = 'hud.bottom';
-    const mk = (i: 0 | 1): Side => { const hp = state.fighters[i].hp; return { trail: hp, lastHp: hp, idle: 0, combo: 0, comboFade: 0 }; };
+    const mk = (i: 0 | 1): Side => { const hp = state.fighters[i].hp; return { trail: hp, lastHp: hp, idle: 0, combo: 0, comboFade: 0, pop: 0, ready: 0, wasFull: false }; };
     this.sides = [mk(0), mk(1)];
   }
 
@@ -57,8 +62,13 @@ export class Hud {
       s.lastHp = f.hp;
       // Combo is tracked on the defender's comboHits and shown on the attacker's side.
       const atk = this.sides[i === 0 ? 1 : 0]!;
-      if (f.comboHits >= 2) { atk.combo = f.comboHits; atk.comboFade = COMBO_FADE; }
+      if (f.comboHits >= 2) { if (f.comboHits !== atk.combo) atk.pop = POP_FRAMES; atk.combo = f.comboHits; atk.comboFade = COMBO_FADE; }
       else if (atk.comboFade > 0) atk.comboFade--;
+      if (s.pop > 0) s.pop--;
+      const full = f.meter >= METER_MAX;
+      if (full && !s.wasFull) s.ready = 30; // meter just filled: one pulse
+      else if (s.ready > 0) s.ready--;
+      s.wasFull = full;
     });
   }
 
@@ -144,12 +154,20 @@ export class Hud {
       ctx.fillStyle = '#1b1b2a'; ctx.beginPath();
       for (let k = 1; k < METER_SEGMENTS; k++) ctx.rect(mx + (METER_W * k) / METER_SEGMENTS - 1, 342, 2, METER_H);
       ctx.fill();
+      if (s.ready > 0) {
+        // Meter-full pulse: a gold outline that expands and fades.
+        const k = s.ready / 30, grow = (1 - k) * 8;
+        ctx.globalAlpha = k * 0.9; ctx.strokeStyle = '#fff6c0'; ctx.lineWidth = 3;
+        ctx.strokeRect(mx - grow, 342 - grow, METER_W + grow * 2, METER_H + grow * 2); ctx.globalAlpha = 1;
+      }
       hudText(ctx, full ? 'SUPER!' : SEG_LABEL[meterSegments(f.meter)]!, dir < 0 ? mx : mx + METER_W, 334, full ? FONT_READY : FONT_LABEL, full ? 3 : 3, full ? '#ffd84a' : '#bfe0ff', dir < 0 ? 'left' : 'right');
       if (s.comboFade > 0) {
         ctx.globalAlpha = Math.min(1, s.comboFade / 20);
-        const cx = dir < 0 ? 24 : 616, al = dir < 0 ? 'left' : 'right';
-        hudText(ctx, NUM_STR[s.combo] ?? String(s.combo), cx, 118, FONT_COMBO, 6.8, '#ffd84a', al);
+        const cx = dir < 0 ? 24 : 616, al = dir < 0 ? 'left' : 'right', sc = popScale(s.pop);
+        if (sc > 1) { ctx.save(); ctx.translate(cx, 118); ctx.scale(sc, sc); ctx.translate(-cx, -118); }
+        hudText(ctx, NUM_STR[s.combo] ?? String(s.combo), cx, 118, FONT_COMBO, 6.8, comboColor(s.combo), al);
         hudText(ctx, 'HITS', cx + (dir < 0 ? 1 : -1) * (s.combo >= 10 ? 44 : 24), 118, FONT_HITS, 3.2, '#ffffff', al);
+        if (sc > 1) ctx.restore();
         ctx.globalAlpha = 1;
       }
     }

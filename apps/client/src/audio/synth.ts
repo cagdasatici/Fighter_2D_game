@@ -7,7 +7,7 @@
 export type SoundKind =
   | "hitL" | "hitM" | "hitH" | "block" | "whiff" | "jump" | "land"
   | "projRivet" | "projSpark" | "projEgg" | "projShuriken" | "projJade"
-  | "super" | "ko";
+  | "super" | "ko" | "thump";
 
 export interface Layer {
   src: "osc" | "noise";
@@ -42,6 +42,11 @@ export const RECIPES: Record<SoundKind, Recipe> = {
   block: r([
     { src: "osc", wave: "square", f0: 900, f1: 900, gain: 0.35, attack: 0.001, dur: 0.025 },
     { src: "noise", f0: 3000, f1: 3000, filter: "highpass", gain: 0.4, attack: 0.001, dur: 0.02 },
+  ]),
+  // Strength-2 impact layer: low-passed noise burst under a falling sub sine.
+  thump: r([
+    { src: "noise", f0: 260, f1: 90, filter: "lowpass", gain: 0.55, attack: 0.002, dur: 0.12 },
+    { src: "osc", wave: "sine", f0: 70, f1: 38, gain: 0.7, attack: 0.002, dur: 0.16 },
   ]),
   whiff: r([{ src: "noise", f0: 1500, f1: 600, filter: "bandpass", gain: 0.3, attack: 0.01, dur: 0.09 }]),
   jump: r([{ src: "osc", wave: "sine", f0: 300, f1: 500, gain: 0.25, attack: 0.004, dur: 0.06 }]),

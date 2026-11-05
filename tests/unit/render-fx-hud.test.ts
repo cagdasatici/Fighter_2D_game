@@ -49,9 +49,9 @@ describe("S10 Fx", () => {
     fx.consume(s);
     const once = fx.liveCount;
     fx.consume(s);
-    expect(once).toBe(7);
+    expect(once).toBe(14); // 6 spikes + 4 debris + shock + star + glow + 1 streak
     expect(fx.liveCount).toBe(once);
-    for (let i = 0; i < 20; i++) fx.update();
+    for (let i = 0; i < 30; i++) fx.update();
     expect(fx.liveCount).toBe(0);
   });
 });

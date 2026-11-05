@@ -145,7 +145,7 @@ export class AudioBus {
   get musicPlaying(): boolean { return this.hasLoop("__music"); }
 
   /** Returns true when a voice was started. distM is listener-to-source distance in metres. */
-  play(kind: SoundKind, priority: Priority, distM: number): boolean {
+  play(kind: SoundKind, priority: Priority, distM: number, rate = 1): boolean {
     const ctx = this.ctx, master = this.master;
     if (!this.unlocked || !ctx || !master || this.isSuspended) return false;
     const att = attenuation(distM);
@@ -154,7 +154,7 @@ export class AudioBus {
     if (this.voices.length >= MAX_VOICES && !this.steal(priority)) return false;
     const recipe = RECIPES[kind];
     const t0 = ctx.currentTime;
-    const { stop } = this.build(ctx, master, recipe, att);
+    const { stop } = this.build(ctx, master, recipe, att, rate);
     this.voices.push({ priority, start: t0, end: t0 + recipe.dur + 0.02, stop });
     return true;
   }
@@ -208,7 +208,7 @@ export class AudioBus {
     return true;
   }
 
-  private build(ctx: AudioContextLike, master: GainLike, recipe: Recipe, att: number): { out: GainLike; stop: () => void } {
+  private build(ctx: AudioContextLike, master: GainLike, recipe: Recipe, att: number, rate = 1): { out: GainLike; stop: () => void } {
     const t0 = ctx.currentTime;
     const out = ctx.createGain();
     out.gain.value = att;
@@ -225,16 +225,16 @@ export class AudioBus {
       if (l.src === "osc") {
         const o = ctx.createOscillator();
         o.type = l.wave ?? "sine";
-        o.frequency.setValueAtTime(l.f0, at);
-        o.frequency.exponentialRampToValueAtTime(l.f1, end);
+        o.frequency.setValueAtTime(l.f0 * rate, at);
+        o.frequency.exponentialRampToValueAtTime(l.f1 * rate, end);
         src = o; head = o;
       } else {
         const n = ctx.createBufferSource();
         n.buffer = this.noise; n.loop = true;
         const f = ctx.createBiquadFilter();
         f.type = l.filter ?? "lowpass";
-        f.frequency.setValueAtTime(l.f0, at);
-        f.frequency.exponentialRampToValueAtTime(l.f1, end);
+        f.frequency.setValueAtTime(l.f0 * rate, at);
+        f.frequency.exponentialRampToValueAtTime(l.f1 * rate, end);
         f.Q.value = 1;
         n.connect(f);
         src = n; head = f;

@@ -44,12 +44,11 @@ export function drawVolcano(ctx: CanvasRenderingContext2D, v: StageView): void {
   drawStatic(ctx, 'vol.sky', -200, GROUND + 200, sky);
   const pulse = 0.55 + 0.45 * Math.sin(v.t * Math.PI * 2 * 0.5 / 60);
   const fx = layerX(v, 0.2);
-  ctx.fillStyle = 'rgba(40,20,22,0.55)'; ctx.beginPath();
+  // Smoke puffs: cached soft sprite (six large alpha arcs per frame were the volcano p95 outlier, see decision 0017).
   for (let i = 0; i < 6; i++) {
     const rise = (v.t * 0.25 + i * 30) % 180, r = 22 + rise * 0.25, cx = fx + Math.sin(i * 2 + rise / 40) * 18 + rise * 0.4;
-    ctx.moveTo(cx + r, 80 - rise); ctx.arc(cx, 80 - rise, r, 0, Math.PI * 2);
+    glowAt(ctx, cx, 80 - rise, r * 1.3, 'rgba(40,20,22,0.6)', 'rgba(40,20,22,0)');
   }
-  ctx.fill();
   drawParallax(ctx, 'vol.far', 0.2, -50, 370, fx, mountain);
   ctx.strokeStyle = `rgba(255,${120 + Math.round(60 * pulse)},40,0.9)`; ctx.lineWidth = 3; ctx.lineCap = 'round';
   ctx.beginPath();

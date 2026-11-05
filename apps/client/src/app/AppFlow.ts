@@ -8,6 +8,7 @@ import { Canvas, GROUND, HEIGHT, WIDTH } from '../render/Canvas.js';
 import { Camera } from '../render/Camera.js';
 import { drawDebug } from '../render/DebugDraw.js';
 import { Fx } from '../render/Fx.js';
+import { Trails } from '../render/Trails.js';
 import { Hud } from '../render/Hud.js';
 import { SKINS } from '../render/Gallery.js';
 import { drawPuppet, drawShadow } from '../render/Puppet.js';
@@ -76,6 +77,8 @@ export class AppFlow {
   private fx = this.newFx();
   private hud = new Hud(this.state);
   private renderTick = 0;
+  private readonly trails = new Trails();
+  private readonly tip = { foot: false, x: 0, y: 0 };
   private fps: { update: () => void; dispose: () => void } | null = null;
   private readonly audio = new AudioBus(() => new AudioContext() as unknown as AudioContextLike);
   private readonly unlockAudio = (): void => {
@@ -120,6 +123,7 @@ export class AppFlow {
     const s = this.settings;
     this.audio.setEffectsVolume(s.effectsVolume); this.audio.setMusicVolume(s.musicVolume); this.audio.setMusicEnabled(s.musicOn);
     this.keyboard.setKeys(s.keys);
+    this.camera.shakeOn = s.screenShake;
     if (import.meta.env.DEV) this.boxes = s.debugBoxes;
   }
   private show(open: (root: HTMLElement) => () => void): void { this.closeUi?.(); this.closeUi = open(this.ui); }
@@ -259,7 +263,7 @@ export class AppFlow {
     const events = rb.takeEvents();
     if (events.length > 0 || this.state.frame !== before) {
       const shown: MatchState = { ...this.state, events };
-      if (shown.frame !== this.fx.lastFxFrame) for (const c of cuesForFrame(prev, shown)) this.audio.play(c.kind, c.priority, 0);
+      if (shown.frame !== this.fx.lastFxFrame) for (const c of cuesForFrame(prev, shown)) this.audio.play(c.kind, c.priority, 0, c.rate);
       this.fx.consume(shown);
     }
     this.camera.update(this.state); this.fx.update(); this.hud.update(this.state);
@@ -324,7 +328,7 @@ export class AppFlow {
     if (this.mode === 'training') { applyTrainingRefills(this.state, this.training); this.advantage.observe(this.state); }
     this.camera.update(this.state);
     // Exactly-once event consumption: Fx.lastFxFrame guards both FX and SFX (decision 0005).
-    if (this.state.frame !== this.fx.lastFxFrame) for (const c of cuesForFrame(this.previous, this.state)) this.audio.play(c.kind, c.priority, 0);
+    if (this.state.frame !== this.fx.lastFxFrame) for (const c of cuesForFrame(this.previous, this.state)) this.audio.play(c.kind, c.priority, 0, c.rate);
     this.fx.consume(this.state); this.fx.update(); this.hud.update(this.state);
     this.audio.setStage(this.state.phase === 'matchEnd' ? null : this.state.stage);
   }
@@ -332,7 +336,7 @@ export class AppFlow {
   private render(alpha: number): void {
     const ctx = this.canvas.begin();
     if (this.scene === 'fight') this.touch.refresh();
-    this.fx.lowFx = this.loop.lowFx;
+    this.fx.lowFx = this.loop.lowFx || this.settings.reducedFx;
     if (this.scene === 'vs') { drawVs(ctx, this.chars, this.stage, this.sceneFrame); return; }
     if (this.scene === 'results') { drawResults(ctx, this.state, this.renderTick++); return; }
     if (this.scene === 'menu') {
@@ -363,28 +367,43 @@ export class AppFlow {
     const s = this.state, f: Fighter = s.fighters[i], old = this.previous.fighters[i];
     const x = (old.x + (f.x - old.x) * alpha) / PX, y = (old.y + (f.y - old.y) * alpha) / PX;
     const move = f.state === 'attack' && f.move ? getMove(f.char, f.move) ?? null : null;
-    const flash = (f.state === 'hitstun' || f.state === 'juggle') && f.stateFrame <= 2 ? 'hit' as const : null;
-    drawPuppet(ctx, SKINS[f.char], poseOf(clipFor(f, move)), this.sx(x), this.sy(y), f.facing,
-      { frame: s.frame, meterFull: f.meter >= METER_MAX, glow: f.meter >= METER_MAX, flash, squash: squashFor(f), mood: moodFor(f) });
+    const flash = (f.state === 'hitstun' || f.state === 'juggle') && f.stateFrame <= 2 || this.fx.hitFlash[i] > 0 ? 'hit' as const : null;
+    const clip = clipFor(f, move), trailing = clip.active && move !== null && !this.fx.lowFx;
+    if (trailing) this.tip.foot = move.input.button.includes('K');
+    drawPuppet(ctx, SKINS[f.char], poseOf(clip), this.sx(x), this.sy(y), f.facing,
+      { frame: s.frame, meterFull: f.meter >= METER_MAX, glow: f.meter >= METER_MAX, flash, squash: squashFor(f), mood: moodFor(f), tip: trailing ? this.tip : undefined });
+    // Record the limb tip in world px so the trail survives camera movement; fade it out once the move stops being active.
+    if (trailing) this.trails.push(i, this.tip.x - 320 + this.camera.x - this.camera.shakeX, GROUND + this.camera.y + this.camera.shakeY - this.tip.y);
+    else this.trails.decay(i);
   }
   private drawScene(ctx: CanvasRenderingContext2D, alpha: number): void {
     const cam = this.camera, s = this.state, sx = this.sx, sy = this.sy;
     const view = { camX: cam.x - cam.shakeX, camY: cam.y + cam.shakeY, t: this.renderTick++ };
+    // Zoom (punch-in / K.O.) scales the world and FX around the focus point; the HUD stays put.
+    const zoomed = cam.zoom > 1.0005;
+    if (zoomed) {
+      const fx = cam.focusX !== 0 || cam.focusY !== 0 ? sx(cam.focusX) : 320, fy = cam.focusX !== 0 || cam.focusY !== 0 ? sy(cam.focusY + 60) : 200;
+      ctx.save(); ctx.translate(fx, fy); ctx.scale(cam.zoom, cam.zoom); ctx.translate(-fx, -fy);
+    }
     drawStage(ctx, s.stage, view);
     drawPlatforms(ctx, s.stage, view);
+    this.fx.drawDesat(ctx);
     for (let i = 0; i < 2; i++) {
       const f = s.fighters[i]!, old = this.previous.fighters[i]!;
       const x = (old.x + (f.x - old.x) * alpha) / PX, y = (old.y + (f.y - old.y) * alpha) / PX;
       const gy = f.platform >= 0 ? (PLATFORMS[s.stage][f.platform]?.y ?? 0) / PX : 0;
       drawShadow(ctx, sx(x), sy(gy), Math.max(0, y - gy), SKINS[f.char].bones.torso.width * 0.9 + 6);
     }
+    for (let i = 0; i < 2; i++) this.trails.draw(ctx, i as 0 | 1, SKINS[s.fighters[i]!.char].accent, sx, sy);
     const superBy = this.fx.superLeft > 0 ? this.fx.superBy : null;
     if (superBy !== 0) this.drawFighter(ctx, 0, alpha);
     if (superBy !== 1) this.drawFighter(ctx, 1, alpha);
     for (const p of s.projectiles) drawProjectile(ctx, p, sx, sy, s.frame, SKINS[s.fighters[p.owner].char].accent);
     this.fx.drawDim(ctx);
+    this.fx.drawBloom(ctx, sx, sy);
     if (superBy !== null) this.drawFighter(ctx, superBy, alpha);
     this.fx.draw(ctx, sx, sy);
+    if (zoomed) ctx.restore();
     this.hud.draw(ctx, s);
   }
   dispose(): void {

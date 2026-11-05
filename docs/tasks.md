@@ -33,7 +33,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | SEL | 3D-style rotating character select (owner request) | PERF | DONE (owner go-ahead 2026-11-05) | d98ab49 | docs/test-results/SEL.md |
 | CTRL | One-button specials + super button, faster meter | PERF | DONE | 68cdb80 | docs/test-results/CTRL.md |
 | PLAT | One-way platforms in sim + stages | CTRL | DONE | fdff6a7 | docs/test-results/PLAT.md |
-| FX | High-quality game-feel effects | PLAT | TODO | | docs/test-results/FX.md |
+| FX | High-quality game-feel effects | PLAT | DONE | HASH | docs/test-results/FX.md |
 | TUNE | Balance + CPU for specials/platforms | FX | TODO | | docs/test-results/TUNE.md |
 
 S12 can run in parallel with S8–S11 (different files).

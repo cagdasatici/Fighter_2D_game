@@ -212,6 +212,8 @@ export interface PuppetOpts {
   mood?: Mood;
   /** Render-only turntable yaw in radians (SEL). Undefined/0 = the normal side view. */
   yaw?: number;
+  /** FX trails: when set, receives the screen position of the active limb tip (fist or foot). */
+  tip?: { foot: boolean; x: number; y: number } | undefined;
 }
 
 /** Draw-order parts (spec §9.2). `armB`/`legB` = far-side limbs, drawn shaded. */
@@ -253,6 +255,10 @@ export function drawPuppet(ctx: CanvasRenderingContext2D, skin: Skin, pose: Pose
   const yw = opts.yaw ? yawScale(opts.yaw, facing) : null;
   const f = yw ? yw.facing : facing, ysx = yw ? yw.sx : 1;
   ctx.translate(x, y); ctx.scale(f * ysx * sc * (1 + sq), sc * (1 - sq));
+  if (opts.tip) {
+    const seg = opts.tip.foot ? b.footF : b.fistF;
+    opts.tip.x = x + f * ysx * sc * (1 + sq) * seg.x1; opts.tip.y = y + sc * (1 - sq) * seg.y1;
+  }
   if (opts.spin) { ctx.translate(b.root.x0, b.root.y0); ctx.rotate(opts.spin * RAD); ctx.translate(-b.root.x0, -b.root.y0); }
   const order = drawOrder(opts.yaw ?? 0), swapped = order !== ORDER;
   for (let i = 0; i < order.length; i++) {

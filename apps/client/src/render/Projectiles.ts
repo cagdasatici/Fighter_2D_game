@@ -20,7 +20,7 @@ function glow(color: string): HTMLCanvasElement | null {
   glowCache.set(color, c);
   return c;
 }
-function drawGlow(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string, alpha = 1): void {
+export function drawGlow(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string, alpha = 1): void {
   const s = glow(color);
   if (!s) return;
   ctx.globalAlpha = alpha; ctx.drawImage(s, x - r, y - r, r * 2, r * 2); ctx.globalAlpha = 1;
