@@ -34,7 +34,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | CTRL | One-button specials + super button, faster meter | PERF | DONE | 68cdb80 | docs/test-results/CTRL.md |
 | PLAT | One-way platforms in sim + stages | CTRL | DONE | fdff6a7 | docs/test-results/PLAT.md |
 | FX | High-quality game-feel effects | PLAT | DONE | ce25d7c | docs/test-results/FX.md |
-| TUNE | Balance + CPU for specials/platforms | FX | DONE | HASHX | docs/test-results/TUNE.md |
+| TUNE | Balance + CPU for specials/platforms | FX | DONE | f1bfbc9 | docs/test-results/TUNE.md |
 
 S12 can run in parallel with S8–S11 (different files).
 
