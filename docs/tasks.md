@@ -31,7 +31,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | TXT | Text, menus, settings, admin page (owner request) | S15 | DONE (decision 0013; gamepad/iPad NOT RUN) | c6c954b | docs/test-results/TXT.md |
 | PERF | Render performance (decision 0014) | TXT | DONE | 982926d | docs/test-results/PERF.md |
 | SEL | 3D-style rotating character select (owner request) | PERF | DONE (owner go-ahead 2026-11-05) | d98ab49 | docs/test-results/SEL.md |
-| CTRL | One-button specials + super button, faster meter | PERF | DONE | HASH | docs/test-results/CTRL.md |
+| CTRL | One-button specials + super button, faster meter | PERF | DONE | 68cdb80 | docs/test-results/CTRL.md |
 | PLAT | One-way platforms in sim + stages | CTRL | TODO | | docs/test-results/PLAT.md |
 | FX | High-quality game-feel effects | PLAT | TODO | | docs/test-results/FX.md |
 | TUNE | Balance + CPU for specials/platforms | FX | TODO | | docs/test-results/TUNE.md |
