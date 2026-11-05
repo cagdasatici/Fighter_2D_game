@@ -1,7 +1,7 @@
 import { CHARS, type CharId, type StageId } from '@kb/shared';
 import { SKINS } from '../render/Gallery.js';
-import { drawPuppet } from '../render/Puppet.js';
-import { getPose } from '../render/poses.js';
+import { drawTurntable, particle, ringDelta, ringSlots, ringTween, spotlight } from '../render/Turntable.js';
+import { easySpecials } from './HowToPlay.js';
 import { button, el, menuNav, screen } from './dom.js';
 import { keyLabel, stageName } from './text.js';
 import type { KeyMap } from './Settings.js';
@@ -25,21 +25,6 @@ export interface CharSelectOpts {
   done: (r: CharSelectResult) => void; back: () => void;
 }
 
-function portrait(id: CharId): HTMLCanvasElement {
-  const c = el('canvas', { width: '192', height: '200', class: 'kb-portrait' });
-  const ctx = c.getContext('2d');
-  if (ctx) {
-    // Accent-coloured spotlight backdrop, then the fighter large and slightly cropped like a portrait.
-    const g = ctx.createRadialGradient(96, 80, 10, 96, 100, 130);
-    g.addColorStop(0, SKINS[id].accent); g.addColorStop(1, '#1b1b2a');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, 192, 200);
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    for (let i = -4; i < 10; i++) { ctx.beginPath(); ctx.moveTo(i * 30, 200); ctx.lineTo(i * 30 + 14, 200); ctx.lineTo(i * 30 + 74, 0); ctx.lineTo(i * 30 + 60, 0); ctx.fill(); }
-    ctx.scale(2, 2); ctx.translate(48, 116); ctx.scale(0.8, 0.8);
-    drawPuppet(ctx, SKINS[id], getPose('idle'), 0, 0, 1, { frame: 0 });
-  }
-  return c;
-}
 const bar = (name: string, v: number): HTMLElement =>
   el('div', { class: 'kb-stat' }, [el('span', {}, [name]), el('span', { class: 'kb-bar' }, [el('i', { style: `width:${v * 20}%` })]), el('em', {}, [`${v}/5`])]);
 
@@ -50,15 +35,96 @@ export function showCharSelect(root: HTMLElement, o: CharSelectOpts): () => void
   let stage: StageId | null = null;
   const tiles = ROSTER.map((id, i) => {
     const t = el('button', { type: 'button', class: 'kb-tile', 'aria-label': CHARS[id].name }, [
-      portrait(id), el('b', {}, [CHARS[id].name]), el('small', {}, [STATS[id].tag]),
-      bar('Power', STATS[id].power), bar('Speed', STATS[id].speed), bar('Range', STATS[id].range)]);
+      el('b', {}, [CHARS[id].name]), el('small', {}, [STATS[id].tag])]);
     t.addEventListener('click', () => { const p = active(); if (p !== null) { cur[p] = i; lock(p); } });
     return t;
   });
   const stageRow = el('div', { class: 'kb-stages' });
+  const info = el('div', { class: o.twoHumans ? 'kb-sel-info kb-sel-left' : 'kb-sel-info' });
+  // ---- SEL carousel (presentation only): ring focus tweens towards each player's cursor. ----
+  const W = 880, H = 360;
+  const cv = el('canvas', { class: 'kb-sel-canvas', width: String(W * 2), height: String(H * 2), 'aria-hidden': 'true' });
+  const cx = cv.getContext('2d');
+  const ring = [0, 1].map(p => ({ from: cur[p]!, to: cur[p]!, f: 99, last: cur[p]! }));
+  const pickedAt: [number | null, number | null] = [null, null];
+  let t = 0, raf = 0;
+  const follow = (p: 0 | 1): void => {
+    const r = ring[p]!;
+    if (cur[p] === r.last) return;
+    const now = ringTween(r.from, r.to, r.f);
+    r.from = now; r.to = r.to + ringDelta(r.last, cur[p], ROSTER.length); r.f = 0; r.last = cur[p];
+  };
+  const drawRing = (c: CanvasRenderingContext2D, p: 0 | 1, x: number, y: number, R: number, k: number): void => {
+    const r = ring[p]!;
+    const focus = ringTween(r.from, r.to, r.f);
+    for (const sl of ringSlots(ROSTER.length, focus, R)) {
+      const id = ROSTER[sl.i]!;
+      const front = sl.i === cur[p] && sl.z > 0.95;
+      c.globalAlpha = sl.alpha;
+      if (front) drawTurntable(c, SKINS[id], x + sl.x, y, t, { scale: k, pickedAt: locked[p] ? pickedAt[p] : null });
+      else drawTurntable(c, SKINS[id], x + sl.x, y - (1 - sl.z) * 26 * k, t, { scale: k * sl.scale, noPodium: true, yaw: sl.theta });
+      c.globalAlpha = 1;
+    }
+  };
+  const frame = (): void => {
+    raf = requestAnimationFrame(frame);
+    t++;
+    for (const r of ring) r.f++;
+    if (!cx) return;
+    cx.setTransform(2, 0, 0, 2, 0, 0);
+    cx.clearRect(0, 0, W, H);
+    const fp: 0 | 1 = o.twoHumans ? 0 : active() ?? 1;
+    const acc = SKINS[ROSTER[cur[fp]]!].accent;
+    const mainX = o.twoHumans ? W * 0.36 : W / 2;
+    const sp = spotlight(acc);
+    if (sp) cx.drawImage(sp, mainX - 180, 0, 360, H);
+    const dot = particle(acc);
+    if (dot) for (let i = 0; i < 24; i++) { // ≤ 30 particles, deterministic drift
+      const px = mainX - 200 + ((i * 97 + t * (0.3 + (i % 5) * 0.1)) % 400);
+      const py = H - ((i * 53 + t * (0.6 + (i % 3) * 0.3)) % H);
+      cx.globalAlpha = 0.25 + (i % 4) * 0.15; cx.drawImage(dot, px, py, 8 + (i % 3) * 4, 8 + (i % 3) * 4);
+    }
+    cx.globalAlpha = 1;
+    drawRing(cx, fp, mainX, H - 60, o.twoHumans ? 190 : 260, 1.7);
+    if (o.twoHumans) drawRing(cx, 1, W * 0.82, H - 70, 90, 1.05);
+    else if (locked[0]) { // P1 badge: the locked pick, small, top-left
+      drawTurntable(cx, SKINS[ROSTER[cur[0]]!], 70, 150, t, { scale: 0.9, pickedAt: pickedAt[0] });
+      badge(cx, 70, 176, 'P1', '#4aa8ff');
+    }
+    badge(cx, mainX, H - 18, o.twoHumans || active() !== 1 ? 'P1' : 'CPU', fp === 0 ? '#4aa8ff' : '#e63946');
+    if (o.twoHumans) badge(cx, W * 0.82, H - 30, 'P2', '#e63946');
+  };
+  const badge = (c: CanvasRenderingContext2D, x: number, y: number, txt: string, color: string): void => {
+    c.font = '900 italic 16px system-ui, sans-serif'; c.textAlign = 'center';
+    c.fillStyle = color; c.beginPath(); c.roundRect(x - 22, y - 13, 44, 22, 8); c.fill();
+    c.strokeStyle = '#1b1b2a'; c.lineWidth = 2; c.stroke();
+    c.fillStyle = '#fff'; c.fillText(txt, x, y + 4);
+  };
+  const showInfo = (): void => {
+    const p: 0 | 1 = o.twoHumans ? 0 : active() ?? 1;
+    const id = ROSTER[cur[p]]!;
+    const extra = o.twoHumans ? [el('p', { class: 'kb-sel-p2' }, [`P2: ${CHARS[ROSTER[cur[1]]!].name}`])] : [];
+    info.replaceChildren(el('b', {}, [CHARS[id].name]), el('small', {}, [STATS[id].tag]),
+      bar('Power', STATS[id].power), bar('Speed', STATS[id].speed), bar('Range', STATS[id].range),
+      el('ul', { class: 'kb-list' }, easySpecials(id).map(([k, n]) => el('li', {}, [el('span', { class: 'kb-notation' }, [k]), el('span', {}, [n])]))),
+      ...extra);
+  };
+  // Swipe on the carousel rotates the active ring; a tap locks the focused fighter.
+  let sx0: number | null = null;
+  const onDown = (e: PointerEvent): void => { sx0 = e.clientX; };
+  const onUp = (e: PointerEvent): void => {
+    if (sx0 === null) return;
+    const dx = e.clientX - sx0; sx0 = null;
+    const p = active();
+    if (p === null || (o.twoHumans && p !== 0 && !locked[0])) return;
+    if (Math.abs(dx) > 30) { cur[p] = (cur[p] + (dx < 0 ? 1 : ROSTER.length - 1)) % ROSTER.length; draw(); }
+    else lock(p);
+  };
+  cv.addEventListener('pointerdown', onDown); cv.addEventListener('pointerup', onUp);
   const status = el('p', { class: 'kb-hint' });
   const active = (): 0 | 1 | null => (!locked[0] ? 0 : !locked[1] ? 1 : null);
   const draw = (): void => {
+    follow(0); follow(1); showInfo();
     tiles.forEach((t, i) => {
       t.classList.toggle('kb-p1', cur[0] === i); t.classList.toggle('kb-p2', cur[1] === i && (o.twoHumans || locked[0]));
       t.classList.toggle('kb-locked', (locked[0] && cur[0] === i) || (locked[1] && cur[1] === i));
@@ -77,7 +143,7 @@ export function showCharSelect(root: HTMLElement, o: CharSelectOpts): () => void
       : p === 1 ? `Now pick your opponent. ${k(k1.LK)} goes back to your pick.` : 'Get ready…';
   };
   const lock = (p: 0 | 1): void => {
-    locked[p] = true; draw();
+    locked[p] = true; pickedAt[p] = t; draw();
     if (locked[0] && locked[1]) o.done({ chars: [ROSTER[cur[0]]!, ROSTER[cur[1]]!], stage: stage ?? HOME_STAGE[ROSTER[cur[0]]!] });
   };
   const onKey = (e: KeyboardEvent): void => {
@@ -97,11 +163,12 @@ export function showCharSelect(root: HTMLElement, o: CharSelectOpts): () => void
     }
   };
   draw();
-  const panel = screen('Character Select', [el('div', { class: 'kb-tiles' }, tiles), stageRow, status,
+  const panel = screen('Character Select', [el('div', { class: 'kb-sel' }, [cv, info]), el('div', { class: 'kb-tiles kb-sel-names' }, tiles), stageRow, status,
     el('div', { class: 'kb-actions' }, [button('Back', o.back)])], 'kb-wide');
   root.replaceChildren(panel);
   window.addEventListener('keydown', onKey);
   // Arrow keys stay with the fighter cursors (P2 uses them); Esc / gamepad B go back, gamepad A presses the focused tile.
   const stopNav = menuNav(panel, { back: o.back, keys: false });
-  return () => { stopNav(); window.removeEventListener('keydown', onKey); panel.remove(); };
+  raf = requestAnimationFrame(frame);
+  return () => { cancelAnimationFrame(raf); cv.removeEventListener('pointerdown', onDown); cv.removeEventListener('pointerup', onUp); stopNav(); window.removeEventListener('keydown', onKey); panel.remove(); };
 }

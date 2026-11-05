@@ -98,3 +98,18 @@ html, body { overscroll-behavior: none; }
 .kb-list li { display: grid; grid-template-columns: minmax(90px, max-content) 1fr; gap: 12px; padding: 4px 0; border-bottom: 1px solid #333355; }
 .kb-wrap { flex-wrap: wrap; justify-content: center; }
 .kb-tile:focus-visible.kb-p1 { outline-color: #ffd84a; }
+/* SEL turntable carousel */
+.kb-sel { position: relative; }
+.kb-sel-canvas { display: block; width: 100%; height: auto; aspect-ratio: 880 / 360; border-radius: 12px; touch-action: pan-y;
+  background: radial-gradient(ellipse at 50% 85%, #3a3266, #14122a 70%); border: 2px solid #1b1b2a; }
+.kb-sel-info { position: absolute; top: 8px; right: 8px; width: 230px; padding: 8px 10px; border-radius: 10px;
+  background: rgba(16, 14, 34, 0.78); border: 2px solid #1b1b2a; font-size: 12px; display: flex; flex-direction: column; gap: 3px; }
+.kb-sel-info b { font-size: 18px; font-weight: 900; font-style: italic; }
+.kb-sel-info small { color: #ffd84a; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 700; font-size: 11px; }
+.kb-sel-info .kb-list { margin: 4px 0 0; padding: 0; list-style: none; font-size: 11px; }
+.kb-sel-info .kb-list li { display: flex; justify-content: space-between; gap: 6px; }
+.kb-sel-p2 { margin: 4px 0 0; color: #ff8a92; font-weight: 800; }
+.kb-sel-names { margin-top: 8px; }
+.kb-sel-names .kb-tile { padding: 4px 6px; }
+@media (max-width: 640px) { .kb-sel-info { position: static; width: auto; margin-top: 6px; } }
+.kb-sel-info.kb-sel-left { right: auto; left: 8px; }

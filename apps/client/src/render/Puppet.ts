@@ -210,6 +210,21 @@ export interface PuppetOpts {
   /** Squash (+) / stretch (−) amount around the feet, e.g. 0.12 = 12 % wider and shorter. */
   squash?: number;
   mood?: Mood;
+  /** Render-only turntable yaw in radians (SEL). Undefined/0 = the normal side view. */
+  yaw?: number;
+}
+
+/** Draw-order parts (spec §9.2). `armB`/`legB` = far-side limbs, drawn shaded. */
+export type Part = 'scarf' | 'tail' | 'drawBack' | 'armB' | 'legB' | 'torso' | 'legF' | 'head' | 'armF' | 'drawFront';
+const ORDER: readonly Part[] = ['scarf', 'tail', 'drawBack', 'armB', 'legB', 'torso', 'legF', 'head', 'armF', 'drawFront'];
+const ORDER_SWAPPED: readonly Part[] = ORDER.map(p => (p === 'armB' ? 'armF' : p === 'armF' ? 'armB' : p === 'legB' ? 'legF' : p === 'legF' ? 'legB' : p));
+/** Limb draw order for a yaw: when sin(yaw) < 0 the far and near limbs trade places. */
+export function drawOrder(yaw = 0): readonly Part[] { return Math.sin(yaw) < 0 ? ORDER_SWAPPED : ORDER; }
+/** Horizontal squash and facing for a yaw: |sx| = max(|cos yaw|, 0.08); facing flips when cos < 0. */
+export function yawScale(yaw: number, facing: 1 | -1): { sx: number; facing: 1 | -1 } {
+  const c = Math.cos(yaw);
+  const f: 1 | -1 = c < 0 ? (facing === 1 ? -1 : 1) : facing;
+  return { sx: Math.max(Math.abs(c), 0.08), facing: f };
 }
 
 // Hoisted out of drawPuppet so no closures are allocated per draw (decision 0014).
@@ -235,28 +250,40 @@ export function drawPuppet(ctx: CanvasRenderingContext2D, skin: Skin, pose: Pose
   curInfo = info;
   ctx.save();
   const sq = opts.squash ?? 0, sc = opts.scale ?? 1;
-  ctx.translate(x, y); ctx.scale(facing * sc * (1 + sq), sc * (1 - sq));
+  const yw = opts.yaw ? yawScale(opts.yaw, facing) : null;
+  const f = yw ? yw.facing : facing, ysx = yw ? yw.sx : 1;
+  ctx.translate(x, y); ctx.scale(f * ysx * sc * (1 + sq), sc * (1 - sq));
   if (opts.spin) { ctx.translate(b.root.x0, b.root.y0); ctx.rotate(opts.spin * RAD); ctx.translate(-b.root.x0, -b.root.y0); }
-  if (skin.scarf) {
-    const sc = skin.scarf;
-    (['scarf4', 'scarf3', 'scarf2', 'scarf1'] as const).forEach((k, i) => { const s = b[k]; if (s) capsule(ctx, s, sc.width - i, shade(sc.color, 10 + i * 6)); });
-  }
-  if (skin.tail && b.tail) {
-    const t = skin.tail, s = b.tail;
-    const n = 5;
-    for (let i = n - 1; i >= 0; i--) {
-      const k0 = i / n, k1 = (i + 1) / n;
-      capsule(ctx, { x0: s.x0 + (s.x1 - s.x0) * k0, y0: s.y0 + (s.y1 - s.y0) * k0, x1: s.x0 + (s.x1 - s.x0) * k1, y1: s.y0 + (s.y1 - s.y0) * k1 }, t.w0 + (t.w1 - t.w0) * k1, t.color);
+  const order = drawOrder(opts.yaw ?? 0), swapped = order !== ORDER;
+  for (let i = 0; i < order.length; i++) {
+    switch (order[i]) {
+      case 'scarf':
+        if (skin.scarf) {
+          const scf = skin.scarf;
+          (['scarf4', 'scarf3', 'scarf2', 'scarf1'] as const).forEach((k, j) => { const s = b[k]; if (s) capsule(ctx, s, scf.width - j, shade(scf.color, 10 + j * 6)); });
+        }
+        break;
+      case 'tail':
+        if (skin.tail && b.tail) {
+          const t = skin.tail, s = b.tail;
+          const n = 5;
+          for (let j = n - 1; j >= 0; j--) {
+            const k0 = j / n, k1 = (j + 1) / n;
+            capsule(ctx, { x0: s.x0 + (s.x1 - s.x0) * k0, y0: s.y0 + (s.y1 - s.y0) * k0, x1: s.x0 + (s.x1 - s.x0) * k1, y1: s.y0 + (s.y1 - s.y0) * k1 }, t.w0 + (t.w1 - t.w0) * k1, t.color);
+          }
+        }
+        break;
+      case 'drawBack': skin.drawBack?.(ctx, b, info); break;
+      // Shading follows the slot (far = shaded), so a swapped near limb reads as the far one.
+      case 'armB': if (swapped) { limb(ctx, skin, b, 'uArmF', true); limb(ctx, skin, b, 'fArmF', true); fist(ctx, skin, b, 'fistF', true); } else { limb(ctx, skin, b, 'uArmB', true); limb(ctx, skin, b, 'fArmB', true); fist(ctx, skin, b, 'fistB', true); } break;
+      case 'legB': if (swapped) { limb(ctx, skin, b, 'thighF', true); limb(ctx, skin, b, 'shinF', true); foot(ctx, skin, b, 'footF', true); } else { limb(ctx, skin, b, 'thighB', true); limb(ctx, skin, b, 'shinB', true); foot(ctx, skin, b, 'footB', true); } break;
+      case 'torso': skin.drawTorso(ctx, b, info); break;
+      case 'legF': if (swapped) { limb(ctx, skin, b, 'thighB', false); limb(ctx, skin, b, 'shinB', false); foot(ctx, skin, b, 'footB', false); } else { limb(ctx, skin, b, 'thighF', false); limb(ctx, skin, b, 'shinF', false); foot(ctx, skin, b, 'footF', false); } break;
+      case 'head': skin.drawHead(ctx, b, info); break;
+      case 'armF': if (swapped) { limb(ctx, skin, b, 'uArmB', false); limb(ctx, skin, b, 'fArmB', false); fist(ctx, skin, b, 'fistB', false); } else { limb(ctx, skin, b, 'uArmF', false); limb(ctx, skin, b, 'fArmF', false); fist(ctx, skin, b, 'fistF', false); } break;
+      case 'drawFront': skin.drawFront?.(ctx, b, info); break;
     }
   }
-  skin.drawBack?.(ctx, b, info);
-  limb(ctx, skin, b, 'uArmB', true); limb(ctx, skin, b, 'fArmB', true); fist(ctx, skin, b, 'fistB', true);
-  limb(ctx, skin, b, 'thighB', true); limb(ctx, skin, b, 'shinB', true); foot(ctx, skin, b, 'footB', true);
-  skin.drawTorso(ctx, b, info);
-  limb(ctx, skin, b, 'thighF', false); limb(ctx, skin, b, 'shinF', false); foot(ctx, skin, b, 'footF', false);
-  skin.drawHead(ctx, b, info);
-  limb(ctx, skin, b, 'uArmF', false); limb(ctx, skin, b, 'fArmF', false); fist(ctx, skin, b, 'fistF', false);
-  skin.drawFront?.(ctx, b, info);
   ctx.restore();
   tint = null; outlineColor = '#1b1b2a';
 }
