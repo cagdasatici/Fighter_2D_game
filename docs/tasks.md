@@ -29,6 +29,12 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S14 | Touch controls + gamepad + iPad PWA + play script | S13 | IMPLEMENTED – DEVICE CHECK PENDING | e1abc90 | docs/test-results/S14.md |
 | S15 | Browser tests, polish pass, release checklist | S14 | IMPLEMENTED – DEVICE CHECK PENDING (decision 0011; release checklist NOT RUN) | a1428e5 | docs/test-results/S15.md |
 | TXT | Text, menus, settings, admin page (owner request) | S15 | DONE (decision 0013; gamepad/iPad NOT RUN) | c6c954b | docs/test-results/TXT.md |
+| PERF | Render performance (decision 0014) | TXT | TODO | | docs/test-results/PERF.md |
+| SEL | 3D-style rotating character select (owner request) | PERF | TODO | | docs/test-results/SEL.md |
+| CTRL | One-button specials + super button, faster meter | PERF | TODO | | docs/test-results/CTRL.md |
+| PLAT | One-way platforms in sim + stages | CTRL | TODO | | docs/test-results/PLAT.md |
+| FX | High-quality game-feel effects | PLAT | TODO | | docs/test-results/FX.md |
+| TUNE | Balance + CPU for specials/platforms | FX | TODO | | docs/test-results/TUNE.md |
 
 S12 can run in parallel with S8–S11 (different files).
 
@@ -170,3 +176,87 @@ RESOLVED by decision 0006
 **Steps:** spec §16 browser tests; README quick start mirroring battlegrounds (`pnpm play`, admin setup, invite). Release checklist: frame-rate sample on iPad (NOT RUN placeholder), audio unlock, reconnect, all 5 chars × all specials manually exercised (checkboxes).
 **Commit:** `S15: add browser tests, README and release checklist`
 
+
+## PERF — Render performance
+**Prerequisites:** TXT DONE. Decision 0014. Render-only; never touch `packages/shared/src/sim`.
+**Files:** `apps/client/src/render/{Canvas.ts,Stage.ts,stages/*.ts,Hud.ts,Fx.ts,Puppet.ts}`, `apps/client/src/app/{GameLoop.ts,AppFlow.ts}`, new `apps/client/src/render/Layers.ts`, new `apps/client/src/render/FrameStats.ts`, `tests/unit/perf.test.ts`.
+**Steps:**
+1. Baseline: in headless Chromium (existing browser-test setup) with 4× CPU throttle, record avg / p95 frame ms over 600 fight frames, CPU vs CPU, each stage. Write numbers to `docs/test-results/PERF.md`.
+2. `Canvas.ts`: backing scale = `Math.min(2, Math.max(1, Math.round(fit * devicePixelRatio)))` (cap 2). Call `getContext('2d', { alpha: false, desynchronized: true })`. Move the scale check out of `begin()` into the resize listener plus a `matchMedia('(resolution: Xdppx)')` change listener (remove it in `dispose`).
+3. `Layers.ts`: `cacheLayer(key, w, h, paint)` returns an offscreen canvas painted once at the backing scale. Each stage splits into `static` parts (sky gradient, far layer, mid layer, floor), each cached at width `640 + 1200*factor` and drawn with one `drawImage` at `layerX`. Only animated decorations (sway, embers, lava pulse, beacons) stay per-frame, at most 40 primitives per stage per frame. Invalidate the cache when the scale changes.
+4. `Hud.ts`: cache the static frame (bar backgrounds, plates, labels) in one layer; draw only the fills each frame.
+5. `Fx.ts`/`Puppet.ts`: no `save/restore` per particle (set state once per batch). No string concatenation or array/closure allocation inside the per-frame draw path (hoist it to module scope). Text with stroke (COUNTER/K.O.) is pre-rendered to a sprite per string.
+6. `FrameStats.ts`: a dev-only overlay (`?fps`) showing fps and avg/p95 ms over the last 120 frames. Fixed-size ring buffer, no allocation.
+7. `GameLoop.ts`: if 3 consecutive frames take > 20 ms, set `lowFx = true` (halves the particle cap, skips trails); expose it for FX. Reset it on scene change.
+8. Re-measure with the same method. **STOP and report** if avg ms did not improve by ≥ 25 % on every stage; write the numbers in PERF.md either way.
+**Tests:** `perf.test.ts`: `cacheLayer` paints once for repeated calls with the same key and repaints after `invalidateLayers()`; the FrameStats ring buffer computes p95 correctly for a known array. Fx draw allocates 0 particles after warm-up (count pool objects).
+**Checks:** `pnpm typecheck && pnpm lint && pnpm test && pnpm build`, plus the browser tests. iPad fps check: NOT RUN.
+**Commit:** `PERF: cache stage/HUD layers, cap backing scale, add frame stats`
+
+## CTRL — One-button specials, super button, faster meter
+**Prerequisites:** PERF DONE. Decision 0014.
+**Files:** `apps/client/src/input/{Macro.ts,Keyboard.ts,Gamepad.ts,Touch.ts,InputSource.ts}`, `apps/client/src/ui/{Settings.ts,HowToPlay.ts,LayoutEdit.ts}`, `apps/client/src/app/{AppFlow.ts,Training.ts}`, `packages/shared/src/sim/{constants.ts,hit.ts}`, `tests/unit/{macro.test.ts,ctrl.test.ts}`, `docs/spec.md` §12 (update the text to match).
+**Steps:**
+1. Settings: add actions `SP` and `SU` (not sim bits; client-only). Defaults: P1 `SP`=`KeyL`, `SU`=`KeyO`; P2 `SP`=`Numpad6`, `SU`=`Numpad3`. Gamepad: RB=SP, RT=SU. Rebindable like the other actions; migrate stored key maps that lack them.
+2. One `MacroPlayer` per local player shared by all sources (keyboard, gamepad, touch). A source reports `spPressed`/`suPressed` edges; the player reads the stick at the press frame → `spDirection` → `buildMacro`. While a macro plays, the player's direction/buttons are overridden by the macro bytes. Remove the double-SP super rule (`DOUBLE_SP_FRAMES`).
+3. `SU` edge: if meter ≥ `SUPER_COST`, play `buildSuper`; else ignore it (no queueing).
+4. Touch: add a `SUPER` button 64 css px left of `SP`, glowing gold when the meter is full and greyed otherwise. `SP` shows a small label of the move the current stick direction will trigger (`spLabel(char, dir)` → the move's display name from characters.md).
+5. Throw stays `LP+LK` (existing). Add keyboard chord help in How to Play.
+6. Meter: `METER_ON_WHIFF_SPECIAL` 15, `METER_DEFENDER_PERCENT` 60; in `hit.ts` lines `addMeter(a, idiv(h.meterOnHit, 2))` → `addMeter(a, idiv(h.meterOnHit * 3, 4))` and `addMeter(a, h.meterOnHit)` → `addMeter(a, idiv(h.meterOnHit * 3, 2))`. Update the determinism golden hashes only through the existing regenerate script, and note this in CTRL.md.
+7. How to Play / Training move list: show `SP`, `→SP` (same as neutral), `↑SP`, `←SP`, `↓SP`, `SUPER` per character, with no motion notation.
+**Tests:** keyboard SP + each direction yields bytes that `detectMotion` accepts, for every char × both facings; SU with meter < cost emits nothing; SU with a full meter emits bytes that trigger the super in a sim run; the stored-keymap migration adds SP/SU; meter after a scripted 5HP hit equals the new formula.
+**Commit:** `CTRL: one-button specials and super for keyboard, pad and touch; faster meter`
+
+## PLAT — One-way platforms
+**Prerequisites:** CTRL DONE.
+**Files:** new `packages/shared/src/sim/platforms.ts`, `packages/shared/src/sim/{physics.ts,fighter.ts,types.ts,state.ts,constants.ts,step.ts}`, `packages/shared/src/ai/cpu.ts`, `apps/client/src/render/stages/*.ts`, `apps/client/src/render/Camera.ts`, `tests/unit/platforms.test.ts`.
+**Steps:**
+1. `platforms.ts`: `export interface Platform { x0: number; x1: number; y: number }` (sim units). `PLATFORMS: Record<StageId, readonly Platform[]>`. Heights: compute `minApex` = the lowest neutral-jump apex across CHARS (a sim run in the test). `LOW = floor(minApex*0.55 / 100)*100`, `HIGH = floor(minApex*1.05 / 100)*100`. Layout for every stage: two LOW platforms `[-34000,-16000]` and `[16000,34000]`, one HIGH `[-9000,9000]`. Record the computed numbers in PLAT.md as constants (hardcode them; never compute at runtime).
+2. Fighter fields: `platform: number` (-1 = none or the ground), `dropTimer: number`. Add them to `state.ts` init, the snapshot/hash and the protocol snapshot schema if the fields are listed explicitly there.
+3. Landing (physics): when airborne and `vy < 0`, if `prevY >= p.y && y <= p.y && x in [x0,x1]` and `dropTimer == 0` → land on p (y = p.y, same landing code as the ground, `platform = index`). Check the platforms before the ground; highest first.
+4. Walking or being pushed off the edge (`platform >= 0`, x outside the span) → `airborne = true`, `vy = 0`, `state = "air"`, `platform = -1`, no jump consumed.
+5. Drop-through: on a platform, the DOWN press edge twice within 12 frames → `dropTimer = 10`, airborne, `vy = -100`. Crouch still works on platforms.
+6. Hit knockback, juggles and knockdown use the same landing rule. Throws/supers that set y keep their existing code.
+7. Projectiles ignore platforms.
+8. Render: draw each platform as a stage-themed slab (rooftop: steel beam; bamboo: lashed bamboo; volcano: basalt ledge) in the cached mid/front layer, with a thin top highlight. The camera follows mid-Y of the fighters, clamped so the ground is always on screen.
+9. CPU: if the opponent is on a higher platform and within 120 px horizontally, jump; if the CPU is on a platform and the opponent is on the ground more than 150 px away, drop.
+**STOP and report** if the determinism suite or the rollback e2e fails after the change.
+**Tests:** landing on LOW from a jump; passing up through from below; walking off the edge falls; double-tap down drops; a single down only crouches; same inputs → same hash (two runs); the rollback test still passes.
+**Commit:** `PLAT: add one-way platforms with drop-through to sim and stages`
+
+## FX — Game-feel effects
+**Prerequisites:** PLAT DONE. Render/audio only; sim events are unchanged except where listed.
+**Files:** `apps/client/src/render/{Fx.ts,Camera.ts,Puppet.ts,Projectiles.ts}`, new `apps/client/src/render/Trails.ts`, `apps/client/src/app/AppFlow.ts`, `apps/client/src/audio/sfx.ts`, `tests/unit/fx.test.ts`.
+**Steps (each scales with `strength` 0/1/2; halve the particle counts when `lowFx`):**
+1. Hit: white 1-frame silhouette flash of the defender; radial spikes 6/9/12; 4/8/14 debris sparks with gravity; an expanding ring shockwave (r 8→28/40/56 over 10 f); directional streak lines along the knockback.
+2. Camera: trauma-based shake (`trauma += 0.25/0.45/0.7`, `shake = trauma² * 6px`, decay 0.05/frame, offsets from a seeded render-only noise, never `Math.random` in a way the sim can see); punch-zoom 1.04 for 6 f on strength 2.
+3. Swing trails (`Trails.ts`): a ring buffer of the last 6 positions of the active limb tip while a move is in active frames; drawn as a tapering quad strip in the character accent colour, alpha 0.6→0.
+4. Block: a hexagon shield flash in front of the defender plus a blue spark spray; parry: a jade shock ring plus 0.1 s desaturation of the background.
+5. Landing/dash/jump: dust puffs (6), and a dash streak behind the fighter.
+6. Super: full-screen accent flash, radial speed lines rotating, a portrait cut-in (existing) plus a bloom glow on the attacker; meter-full "ready" pulse on the HUD bar.
+7. KO: 3 hit-flashes, 40 f render slow-mo (exists, keep), a zoom to the loser 1.15, a white-out ring, a screen crack effect for 30 f, then "K.O." sprite text.
+8. Combo counter: a pop scale 1.4→1 per hit, colour heats from white→gold→red at 3/6 hits.
+9. Audio: pitch +5 % per combo hit (cap +30 %); low-pass "thump" layer on strength 2.
+10. A Settings toggle "Screen shake" (default on) and "Reduced effects" (sets `lowFx`).
+**Tests:** shake trauma clamps to 1 and decays to 0; the trail ring buffer keeps ≤ 6 points; under 1000 events the particles stay ≤ the cap (256, or 128 with lowFx); FX are not replayed on rollback (the existing guard still holds).
+**Visual check:** screenshots of hit/block/super/KO into `docs/test-results/FX-*.png`. **STOP and report** for owner approval.
+**Commit:** `FX: add hitflash, shockwaves, trails, trauma shake and KO sequence`
+
+## TUNE — Balance + CPU for the new mechanics
+**Prerequisites:** FX DONE.
+**Files:** `packages/shared/src/chars/*.ts`, `packages/shared/src/ai/cpu.ts`, `tests/unit/balance.test.ts`.
+**Steps:** run 200 CPU-hard vs CPU-hard matches per pair with fixed seeds (existing harness). Every pair's win rate must be in 40–60 %; adjust only damage, startup and recovery numbers in char data, ±10 % per value. The CPU uses `↑SP` to recover onto platforms, and uses SUPER when its meter is full and the opponent is in range. **STOP and report** if any pair stays outside 35–65 % after 3 tuning passes.
+**Commit:** `TUNE: rebalance specials and CPU for platforms and one-button super`
+
+## SEL — Rotating character select (owner request 2026-11-05)
+**Prerequisites:** PERF DONE. Inspired by battlegrounds' 3D select, but **no three.js** (no new deps; the fighters are 2D code-drawn puppets). Fake 3D only.
+**Files:** `apps/client/src/ui/CharSelect.ts`, `apps/client/src/ui/experience.css`, new `apps/client/src/render/Turntable.ts`, `apps/client/src/render/Puppet.ts` (add an optional `yaw` to the draw options only), `tests/unit/turntable.test.ts`.
+**Steps:**
+1. `Puppet.ts`: option `yaw` (radians, render-only). Draw with a horizontal scale `cos(yaw)` (min |0.08|). Facing flips when `cos < 0`. Front/back limb draw order swaps when `sin(yaw) < 0`. Default yaw 0 must look identical to today (no change to gameplay draws).
+2. `Turntable.ts`: `drawTurntable(ctx, skin, x, y, t, opts)` draws an elliptical podium (accent rim glow, cached sprite) and its shadow, plus the puppet in `idle` pose (breathing), yaw = `t * 0.02` (one turn about every 5 s). When a character is picked, it plays the win pose facing the camera (yaw eases to 0 over 20 f).
+3. `CharSelect.ts`: a carousel of the 5 characters on a 3D ring: angle `θ_i = 2π i/5 − focus`, screen x = `R sin θ`, depth z = `cos θ`, scale `0.6 + 0.4*(z+1)/2`, alpha by depth, drawn back-to-front. Left/right (keys, d-pad, swipe) rotates the ring with an eased 18 f tween; the focused character is front and centre on the turntable with its name, stat bars and move list (CTRL labels). P2 or CPU selection shows a second smaller ring on the right (local 2P) or just the badge (online).
+4. Background: a spotlight cone and particles in the focused character's accent colour (cached sprites, ≤ 30 particles).
+5. Keep the existing select logic, events and online messages unchanged; this is presentation only. Clean up all listeners and rAF on exit.
+**Tests:** ring math: the focused index has z = 1 and is drawn last; rotating 5 steps returns to the start; the yaw flip rule (cos < 0 → facing inverted); the draw order with yaw 0 matches the current draw order.
+**Visual check:** screenshot `docs/test-results/SEL.png`. **STOP and report** for owner approval.
+**Commit:** `SEL: add rotating turntable carousel character select`
