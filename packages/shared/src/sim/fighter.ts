@@ -1,11 +1,11 @@
 import { CHARS, getMove } from "../chars/index.js";
 import type { MoveDef } from "../chars/types.js";
 import { idiv } from "../fixed.js";
-import { HK, HP, LK, LP, UP, numpad, type InputByte } from "../input/buttons.js";
+import { DOWN, HK, HP, LK, LP, UP, numpad, type InputByte } from "../input/buttons.js";
 import { inputAt, pressed } from "../input/history.js";
 import { chargeReady, detectMotion, MOTION_WINDOW, resolveRequest, type MotionId } from "../input/motion.js";
 import {
-  AIR_JUMP_MIN_VY, AIR_JUMP_VX_PERCENT, AIR_JUMP_VY, DASH_WINDOW, GETUP_FRAMES, JUMP_SQUAT,
+  AIR_JUMP_MIN_VY, AIR_JUMP_VX_PERCENT, AIR_JUMP_VY, DASH_WINDOW, DROP_FRAMES, DROP_TAP_FRAMES, DROP_VY, GETUP_FRAMES, JUMP_SQUAT,
   KNOCKDOWN_FRAMES, LANDING_RECOVERY, LANDING_RECOVERY_ATTACK, METER_MAX, METER_ON_WHIFF_SPECIAL,
   SUPER_COST, THROW_TECH_WINDOW,
 } from "./constants.js";
@@ -168,6 +168,13 @@ function enterIdle(f: Fighter): void {
   f.stun = 0; f.comboHits = 0; // spec §8.3 rule 7
 }
 
+/** Down pressed now and pressed once before within DROP_TAP_FRAMES frames. */
+function dropInput(f: Fighter): boolean {
+  if (!pressed(f, DOWN, 0)) return false;
+  for (let ago = 1; ago < DROP_TAP_FRAMES; ago++) if (pressed(f, DOWN, ago)) return true;
+  return false;
+}
+
 function actionable(f: Fighter, input: InputByte, np: number, live = true): void {
   enterIdle(f);
   const req = live ? requestMove(f, () => true, np) : null;
@@ -175,6 +182,10 @@ function actionable(f: Fighter, input: InputByte, np: number, live = true): void
   const c = CHARS[f.char];
   const dir = numpad(input, f.facing);
   f.crouching = false;
+  if (live && f.platform >= 0 && dropInput(f)) {
+    setState(f, "air"); f.airborne = true; f.vy = DROP_VY; f.vx = 0; f.platform = -1; f.dropTimer = DROP_FRAMES;
+    f.airJumps = 0; return;
+  }
   if (dir >= 7) { setState(f, "jumpSquat"); f.vx = 0; return; }
   if (live && dashInput(f, 6)) { setState(f, "dashF"); f.vx = c.dashFwd.speed * f.facing; return; }
   if (live && dashInput(f, 4)) {

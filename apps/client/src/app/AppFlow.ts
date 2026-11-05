@@ -1,4 +1,4 @@
-import { CHARS, METER_MAX, PX, chargeReady, cleanSocd, cloneState, createCpu, createMatch, cpuInput, getMove, step, type CharId, type CpuState, type Fighter, type InputByte, type MatchState, type StageId } from '@kb/shared';
+import { CHARS, METER_MAX, PLATFORMS, PX, chargeReady, cleanSocd, cloneState, createCpu, createMatch, cpuInput, getMove, step, type CharId, type CpuState, type Fighter, type InputByte, type MatchState, type StageId } from '@kb/shared';
 import { Keyboard } from '../input/Keyboard.js';
 import { Touch } from '../input/Touch.js';
 import { MacroPlayer, type SpContext } from '../input/Macro.js';
@@ -14,6 +14,7 @@ import { drawPuppet, drawShadow } from '../render/Puppet.js';
 import { drawProjectile } from '../render/Projectiles.js';
 import { drawMenuArt } from '../render/MenuArt.js';
 import { drawStage } from '../render/Stage.js';
+import { drawPlatforms } from '../render/stages/platforms.js';
 import { clipFor, moodFor, poseOf, squashFor } from '../render/clips.js';
 import { getPose } from '../render/poses.js';
 import { GameLoop } from './GameLoop.js';
@@ -368,11 +369,14 @@ export class AppFlow {
   }
   private drawScene(ctx: CanvasRenderingContext2D, alpha: number): void {
     const cam = this.camera, s = this.state, sx = this.sx, sy = this.sy;
-    drawStage(ctx, s.stage, { camX: cam.x - cam.shakeX, camY: cam.y + cam.shakeY, t: this.renderTick++ });
+    const view = { camX: cam.x - cam.shakeX, camY: cam.y + cam.shakeY, t: this.renderTick++ };
+    drawStage(ctx, s.stage, view);
+    drawPlatforms(ctx, s.stage, view);
     for (let i = 0; i < 2; i++) {
       const f = s.fighters[i]!, old = this.previous.fighters[i]!;
       const x = (old.x + (f.x - old.x) * alpha) / PX, y = (old.y + (f.y - old.y) * alpha) / PX;
-      drawShadow(ctx, sx(x), sy(0), y, SKINS[f.char].bones.torso.width * 0.9 + 6);
+      const gy = f.platform >= 0 ? (PLATFORMS[s.stage][f.platform]?.y ?? 0) / PX : 0;
+      drawShadow(ctx, sx(x), sy(gy), Math.max(0, y - gy), SKINS[f.char].bones.torso.width * 0.9 + 6);
     }
     const superBy = this.fx.superLeft > 0 ? this.fx.superBy : null;
     if (superBy !== 0) this.drawFighter(ctx, 0, alpha);

@@ -110,6 +110,9 @@ function decide(cpu: CpuState, s: MatchState): number[] {
   const dist = abs(opp.x - me.x);
   const toward = opp.x > me.x ? 1 : -1;
   const c = me.char;
+  // Platforms: jump up toward an opponent standing on a higher platform; drop when the opponent is far below.
+  if (me.platform < 0 && opp.platform >= 0 && opp.y > me.y && dist <= 12000) return [UP, 0, 0, 0, 0, 0];
+  if (me.platform >= 0 && opp.platform < 0 && !opp.airborne && dist > 15000) return [DOWN, 0, DOWN, 0, 0, 0];
   // Super: meter full, opponent in hitstun within range.
   const sup = findSuper(c);
   if (sup && me.meter >= METER_MAX && (opp.state === "hitstun" || opp.state === "juggle") && dist < 20000) return macroFor(sup);

@@ -36,6 +36,9 @@ export const PROJECTILE_LIMIT_PER_PLAYER = 1;
 // Movement detail (spec §8.1 step 3, characters.md Kaze).
 export const DASH_WINDOW = 12;           // 6,5,6 within this many frames
 export const AIR_PUSH_DY = 60 * 100;     // airborne fighters push only if |dy| < 60 px
+export const DROP_TAP_FRAMES = 12;       // frames allowed between the two down taps (drop-through)
+export const DROP_FRAMES = 10;           // platforms ignored for this long after a drop
+export const DROP_VY = -100;
 export const AIR_JUMP_MIN_VY = 600;      // double jump allowed once vy < 600
 export const AIR_JUMP_VY = 1400;
 export const AIR_JUMP_VX_PERCENT = 90;

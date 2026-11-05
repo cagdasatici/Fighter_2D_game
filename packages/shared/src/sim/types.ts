@@ -33,6 +33,8 @@ export interface Fighter {
   lockTimer: number;                               // frames until the next lock hit
   rehit: number;                                   // stampedeRoll: frames until the box may hit again
   spCount: number;                                 // stampedeRoll: contacts so far
+  platform: number;                                // index into PLATFORMS[stage] while standing on one (-1 = ground / none)
+  dropTimer: number;                               // frames left in which platforms are ignored (drop-through)
   superScale: number;                              // S7: % scale fixed by the current super's first hit (0 = not yet)
 }
 export interface Projectile {

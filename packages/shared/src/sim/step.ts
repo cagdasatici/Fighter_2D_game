@@ -4,7 +4,7 @@ import { updateCharge } from "../input/motion.js";
 import { SUPER_FREEZE_FRAMES } from "./constants.js";
 import { BUTTON_BUFFER, afterPhysics, stateMachine, superStarted, updateFacing } from "./fighter.js";
 import { event, hits, pushback } from "./hit.js";
-import { physics, pushboxes } from "./physics.js";
+import { edgeFall, physics, pushboxes } from "./physics.js";
 import { ownedBy, projectiles } from "./projectile.js";
 import { round } from "./round.js";
 import { moveTick } from "./specials.js";
@@ -40,11 +40,12 @@ export function step(s: MatchState, inputs: [InputByte, InputByte]): void {
       event(s, "super", i as 0 | 1, f, 2);
     }
     const wasAir = f.airborne;
-    physics(f);
+    physics(f, s.stage);
     afterPhysics(f, wasAir);
     moveTick(s, i as 0 | 1);
   }
   pushboxes(s, prevX, [wasAir[0] && !a.airborne, wasAir[1] && !b.airborne]);
+  edgeFall(a, s.stage); edgeFall(b, s.stage);
   projectiles(s, stopped);
   hits(s);
   pushback(s);

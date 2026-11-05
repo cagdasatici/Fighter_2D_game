@@ -67,6 +67,7 @@ const FighterSchema = z.strictObject({
   chargeBack: nonnegative, chargeGrace: nonnegative, lastPressFrame: integer, cancelOk: z.boolean(), counterArmed: z.boolean(),
   airJumps: nonnegative, gravityScale: nonnegative, wins: nonnegative,
   lockLeft: nonnegative, lockTimer: nonnegative, rehit: nonnegative, spCount: nonnegative, superScale: nonnegative,
+  platform: integer.min(-1), dropTimer: nonnegative,
 });
 export const MatchStateSchema: z.ZodType<MatchState> = z.strictObject({
   frame: nonnegative, rng: u32, phase: z.enum(["intro", "fight", "roundEnd", "matchEnd"]), phaseFrame: nonnegative,
