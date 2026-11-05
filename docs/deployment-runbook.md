@@ -3,7 +3,7 @@
 Live setup on the owner's Mac (2026-11-05):
 - Code: `.worktrees/prod` (detached checkout of main). Env: `~/kb-env` (chmod 600, from `ops/deploy/env.example`). Data: `~/kb-data`. Logs: `~/kb-logs/`.
 - Server: LaunchAgent `com.knockoutbash.server` (`ops/deploy/com.knockoutbash.server.plist`) runs `ops/deploy/run-prod.sh` on `127.0.0.1:2568`.
-- Cloudflare Access: Zero Trust app `fighter` (team raspy-cloud-c464) uses the shared reusable policy `Players allow`, the same one that protects battle; edit that policy to change which emails can sign in. 24 h session.
+- Cloudflare Access: Zero Trust app `fighter` (team raspy-cloud-c464) uses the shared reusable policy `Players allow`, the same one that protects battle; edit that policy to change which emails can sign in. Access session: 1 month (same as battle). The server runs with `OPEN_JOIN=1` + `CF_ACCESS_TEAM`/`CF_ACCESS_AUD`, so no invitation is needed: the game signs players in from their Access identity.
 - Public HTTPS: the existing Cloudflare tunnel `battlegrounds` (`/etc/cloudflared/config.yml`, LaunchDaemon `com.cloudflare.cloudflared`) has an ingress rule `fighter.cagdasatici.com → http://127.0.0.1:2568`; DNS CNAME created with `cloudflared tunnel route dns battlegrounds fighter.cagdasatici.com`.
 
 ## Update to the latest main
