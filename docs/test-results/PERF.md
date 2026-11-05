@@ -1,6 +1,6 @@
 # PERF — render performance test evidence
 
-Date: 2026-11-05. Node v26.10.0 (engine warning: project pins 24.22.2). Slice commit hash: see `docs/tasks.md` PERF row.
+Date: 2026-11-05. Node v26.10.0 (engine warning: project pins 24.22.2). Slice commit hash: 982926d.
 
 ## Checks (one chained run, exit 0)
 `pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm test:browser`
