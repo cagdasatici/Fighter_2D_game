@@ -1,5 +1,6 @@
 import type { MatchState } from '@kb/shared';
 import { GROUND } from './Canvas.js';
+import { cacheLayer, getLayer } from './Layers.js';
 import { drawBamboo } from './stages/bamboo.js';
 import { drawRooftop } from './stages/rooftop.js';
 import { drawVolcano } from './stages/volcano.js';
@@ -50,6 +51,11 @@ export function glowAt(ctx: CanvasRenderingContext2D, x: number, y: number, r: n
     g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
   });
   if (sp) ctx.drawImage(sp, x - r, y - r, r * 2, r * 2);
+}
+/** Opaque or transparent full-width (640 px) layer painted once; drawn at stage y `y0`. */
+export function drawStatic(ctx: CanvasRenderingContext2D, key: string, y0: number, h: number, paint: (g: CanvasRenderingContext2D) => void): void {
+  const c = getLayer(key) ?? cacheLayer(key, 640, h, g => { g.translate(0, -y0); paint(g); });
+  if (c) ctx.drawImage(c as unknown as CanvasImageSource, 0, y0, 640, h);
 }
 const PAINTERS: Record<MatchState['stage'], (ctx: CanvasRenderingContext2D, v: StageView) => void> = {
   rooftop: drawRooftop, bamboo: drawBamboo, volcano: drawVolcano,

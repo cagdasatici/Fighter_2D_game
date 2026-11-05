@@ -1,17 +1,18 @@
+import { textSprite, type TextSprite } from './Layers.js';
 import { PX, SUPER_FREEZE_FRAMES, type FxEvent, type MatchState } from '@kb/shared';
 
 /** Spec §9.4. Render-only; never mutates sim state. */
 export const POOL_SIZE = 256;
 export type ParticleKind = 'line' | 'dot' | 'ring' | 'chevron' | 'star' | 'shield' | 'sparkle' | 'puff';
 export interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; r: number; color: string; kind: ParticleKind; alive: boolean }
-export interface Banner { text: string; x: number; y: number; life: number; max: number; color: string; scaleFrom: number }
+export interface Banner { text: string; x: number; y: number; life: number; max: number; color: string; scaleFrom: number; centred: boolean; sprite: TextSprite | null }
 
 const DT = 1 / 60;
 const BANNERS = 8;
 
 export class Fx {
   readonly pool: Particle[] = Array.from({ length: POOL_SIZE }, () => ({ x: 0, y: 0, vx: 0, vy: 0, life: 0, max: 1, r: 0, color: '#fff', kind: 'dot' as ParticleKind, alive: false }));
-  readonly banners: Banner[] = Array.from({ length: BANNERS }, () => ({ text: '', x: 0, y: 0, life: 0, max: 1, color: '#fff', scaleFrom: 1 }));
+  readonly banners: Banner[] = Array.from({ length: BANNERS }, () => ({ text: '', x: 0, y: 0, life: 0, max: 1, color: '#fff', scaleFrom: 1, centred: false, sprite: null }));
   /** Last sim frame whose events were consumed; guarantees each frame's events fire exactly once. */
   lastFxFrame = -1;
   flash = 0;          // white screen-flash frames left
@@ -20,6 +21,8 @@ export class Fx {
   superBy: 0 | 1 = 0;
   superName = '';
   private cursor = 0;
+  /** Set by the game loop when frames run long: halves the particle cap (decision 0014). */
+  lowFx = false;
 
   koLeft = 0;         // frames left of the K.O. vignette/slow-down look
   private tick = 0;
@@ -42,14 +45,22 @@ export class Fx {
 
   private spawn(x: number, y: number, vx: number, vy: number, life: number, r: number, color: string, kind: ParticleKind): void {
     // Ring-buffer reuse: the pool never grows, oldest particles are overwritten.
+    const cap = this.lowFx ? POOL_SIZE >> 1 : POOL_SIZE;
+    if (this.cursor >= cap) this.cursor = 0;
     const p = this.pool[this.cursor]!;
-    this.cursor = (this.cursor + 1) % POOL_SIZE;
+    this.cursor++;
     p.x = x; p.y = y; p.vx = vx; p.vy = vy; p.life = life; p.max = life; p.r = r; p.color = color; p.kind = kind; p.alive = true;
   }
 
   private banner(text: string, x: number, y: number, life: number, color: string, scaleFrom = 1): void {
     let slot = this.banners[0]!;
     for (const b of this.banners) if (b.life < slot.life) slot = b;
+    // Stroked text is pre-rendered to a sprite once per string (built at spawn, drawn every frame).
+    const centred = text === 'K.O.';
+    slot.centred = centred;
+    slot.sprite = centred
+      ? textSprite(text, { font: 'italic 900 72px system-ui', fill: '#ffd84a', outline: '#1b1b2a', outlineWidth: 10, accent: '#e63946', accentWidth: 2 }, 280, 130)
+      : textSprite(text, { font: 'italic 900 22px system-ui', fill: color, outline: '#1b1b2a', outlineWidth: 6 }, 150, 50);
     slot.text = text; slot.x = x; slot.y = y; slot.life = life; slot.max = life; slot.color = color; slot.scaleFrom = scaleFrom;
   }
 
@@ -136,12 +147,14 @@ export class Fx {
 
   /** Particles, banners and screen flashes. `sx/sy` map world px (y up) to screen. */
   draw(ctx: CanvasRenderingContext2D, sx: (x: number) => number, sy: (y: number) => number): void {
-    ctx.save();
+    ctx.save(); // one save/restore for the whole batch, none per particle
+    ctx.lineWidth = 2; ctx.lineJoin = 'round';
+    let lastColor = '';
     for (const p of this.pool) {
       if (!p.alive) continue;
       const k = p.life / p.max, x = sx(p.x), y = sy(p.y);
       ctx.globalAlpha = Math.max(0, k);
-      ctx.strokeStyle = p.color; ctx.fillStyle = p.color; ctx.lineWidth = 2;
+      if (p.color !== lastColor) { ctx.strokeStyle = p.color; ctx.fillStyle = p.color; lastColor = p.color; }
       if (p.kind === 'line') {
         // Tapered spike: wide at the inner end, sharp at the tip.
         const len = Math.hypot(p.vx, p.vy) || 1, ux = p.vx / len, uy = -p.vy / len, w = 1 + p.r * 0.18 * k;
@@ -154,12 +167,13 @@ export class Fx {
         ctx.lineTo(x, y + r); ctx.lineTo(x - q, y + q); ctx.lineTo(x - r, y); ctx.lineTo(x - q, y - q); ctx.closePath();
         ctx.fillStyle = '#fff6c8'; ctx.fill();
         ctx.beginPath(); ctx.arc(x, y, r * 0.32, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
+        lastColor = '';
       } else if (p.kind === 'shield') {
         // Hexagonal guard flash facing away from the attacker.
         const d = p.vx >= 0 ? 1 : -1, r = p.r * (1.1 - k * 0.3);
         ctx.lineWidth = 3; ctx.beginPath();
         for (let i = 0; i <= 4; i++) { const a = (-60 + i * 30) * Math.PI / 180; const px = x + Math.cos(a) * r * d, py = y + Math.sin(a) * r * 1.3; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
-        ctx.stroke(); ctx.globalAlpha *= 0.35; ctx.lineTo(x, y); ctx.closePath(); ctx.fill();
+        ctx.stroke(); ctx.globalAlpha *= 0.35; ctx.lineTo(x, y); ctx.closePath(); ctx.fill(); ctx.lineWidth = 2;
       } else if (p.kind === 'sparkle') {
         const r = p.r * k;
         ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r * 0.3, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r * 0.3, y); ctx.closePath(); ctx.fill();
@@ -171,26 +185,20 @@ export class Fx {
         ctx.beginPath(); ctx.arc(x, y, p.r * (1 - k * 0.5), 0, Math.PI * 2); ctx.stroke();
       } else if (p.kind === 'chevron') {
         const d = p.vx >= 0 ? 1 : -1;
-        ctx.lineWidth = 3; ctx.lineJoin = 'round';
-        ctx.beginPath(); ctx.moveTo(x - d * p.r, y - p.r); ctx.lineTo(x, y); ctx.lineTo(x - d * p.r, y + p.r); ctx.stroke();
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(x - d * p.r, y - p.r); ctx.lineTo(x, y); ctx.lineTo(x - d * p.r, y + p.r); ctx.stroke(); ctx.lineWidth = 2;
       } else { ctx.beginPath(); ctx.arc(x, y, p.r, 0, Math.PI * 2); ctx.fill(); }
     }
     ctx.globalAlpha = 1;
     if (this.koLeft > 0) this.drawKoVignette(ctx);
-    ctx.textAlign = 'center'; ctx.lineJoin = 'round';
     for (const b of this.banners) {
-      if (b.life <= 0) continue;
-      const centred = b.text === 'K.O.';
+      if (b.life <= 0 || !b.sprite) continue;
       const t = 1 - b.life / b.max, scale = b.scaleFrom + (1 - b.scaleFrom) * Math.min(1, t * 6);
-      ctx.save();
-      ctx.translate(centred ? 320 : sx(b.x), centred ? 190 : sy(b.y)); ctx.scale(scale, scale);
+      const w = b.sprite.w * scale, h = b.sprite.h * scale;
       ctx.globalAlpha = Math.min(1, b.life / 10);
-      ctx.font = centred ? 'italic 900 72px system-ui' : 'italic 900 22px system-ui';
-      ctx.lineWidth = centred ? 10 : 6; ctx.strokeStyle = '#1b1b2a'; ctx.strokeText(b.text, 0, 0);
-      ctx.fillStyle = centred ? '#ffd84a' : b.color; ctx.fillText(b.text, 0, 0);
-      if (centred) { ctx.lineWidth = 2; ctx.strokeStyle = '#e63946'; ctx.strokeText(b.text, 0, 0); }
-      ctx.restore();
+      ctx.drawImage(b.sprite.canvas as unknown as CanvasImageSource, (b.centred ? 320 : sx(b.x)) - w / 2, (b.centred ? 190 : sy(b.y)) - h / 2, w, h);
     }
+    ctx.globalAlpha = 1;
     if (this.superLeft > 0) this.drawCutIn(ctx);
     if (this.flash > 0 || (this.koFlashes > 0 && this.koFlashes % 6 >= 3)) {
       ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(0, 0, 640, 360);

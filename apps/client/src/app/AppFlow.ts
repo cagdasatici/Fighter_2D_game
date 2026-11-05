@@ -16,6 +16,7 @@ import { drawStage } from '../render/Stage.js';
 import { clipFor, moodFor, poseOf, squashFor } from '../render/clips.js';
 import { getPose } from '../render/poses.js';
 import { GameLoop } from './GameLoop.js';
+import { attachFpsOverlay } from '../render/FrameStats.js';
 import { AudioBus, type AudioContextLike } from '../audio/AudioBus.js';
 import { cuesForFrame } from '../audio/sfx.js';
 import { AdvantageMeter, advantageText, applyTrainingRefills, dummyInput, type TrainingOptions } from './Training.js';
@@ -72,6 +73,7 @@ export class AppFlow {
   private fx = this.newFx();
   private hud = new Hud(this.state);
   private renderTick = 0;
+  private fps: { update: () => void; dispose: () => void } | null = null;
   private readonly audio = new AudioBus(() => new AudioContext() as unknown as AudioContextLike);
   private readonly unlockAudio = (): void => {
     this.audio.unlock();
@@ -91,7 +93,8 @@ export class AppFlow {
     }, () => this.togglePause());
     this.gamepad = new Gamepad(() => this.togglePause());
     this.applySettings();
-    this.loop = new GameLoop(() => this.tick(), alpha => this.render(alpha));
+    this.loop = new GameLoop(() => this.tick(), alpha => this.render(alpha), () => this.fps?.update());
+    if (import.meta.env.DEV && new URLSearchParams(location.search).has('fps')) this.fps = attachFpsOverlay(this.loop.stats);
     window.addEventListener('pointerdown', this.unlockAudio);
     window.addEventListener('keydown', this.unlockAudio);
     document.addEventListener('visibilitychange', this.onVisibility);
@@ -140,7 +143,7 @@ export class AppFlow {
     const k = this.keyboard.read(), g = this.gamepad.read();
     return [cleanSocd(k[0] | g[0] | this.touch.read()), cleanSocd(k[1] | g[1])];
   }
-  private setScene(scene: Scene): void { this.scene = scene; this.touch.setActive(scene === 'fight'); }
+  private setScene(scene: Scene): void { this.scene = scene; this.loop.resetPerf(); this.touch.setActive(scene === 'fight'); }
   private toSelect(): void {
     this.setScene('menu'); this.paused = false; this.audio.setStage(null);
     this.show(root => showCharSelect(root, {
@@ -316,6 +319,7 @@ export class AppFlow {
 
   private render(alpha: number): void {
     const ctx = this.canvas.begin();
+    this.fx.lowFx = this.loop.lowFx;
     if (this.scene === 'vs') { drawVs(ctx, this.chars, this.stage, this.sceneFrame); return; }
     if (this.scene === 'results') { drawResults(ctx, this.state, this.renderTick++); return; }
     if (this.scene === 'menu') {
@@ -340,35 +344,36 @@ export class AppFlow {
     window.removeEventListener('pointerdown', this.unlockAudio);
     window.removeEventListener('keydown', this.unlockAudio);
   }
+  private readonly sx = (x: number): number => 320 + x - this.camera.x + this.camera.shakeX;
+  private readonly sy = (y: number): number => GROUND - y + this.camera.y + this.camera.shakeY;
+  private drawFighter(ctx: CanvasRenderingContext2D, i: 0 | 1, alpha: number): void {
+    const s = this.state, f: Fighter = s.fighters[i], old = this.previous.fighters[i];
+    const x = (old.x + (f.x - old.x) * alpha) / PX, y = (old.y + (f.y - old.y) * alpha) / PX;
+    const move = f.state === 'attack' && f.move ? getMove(f.char, f.move) ?? null : null;
+    const flash = (f.state === 'hitstun' || f.state === 'juggle') && f.stateFrame <= 2 ? 'hit' as const : null;
+    drawPuppet(ctx, SKINS[f.char], poseOf(clipFor(f, move)), this.sx(x), this.sy(y), f.facing,
+      { frame: s.frame, meterFull: f.meter >= METER_MAX, glow: f.meter >= METER_MAX, flash, squash: squashFor(f), mood: moodFor(f) });
+  }
   private drawScene(ctx: CanvasRenderingContext2D, alpha: number): void {
-    const cam = this.camera, s = this.state;
-    const sx = (x: number): number => 320 + x - cam.x + cam.shakeX;
-    const sy = (y: number): number => GROUND - y + cam.y + cam.shakeY;
+    const cam = this.camera, s = this.state, sx = this.sx, sy = this.sy;
     drawStage(ctx, s.stage, { camX: cam.x - cam.shakeX, camY: cam.y + cam.shakeY, t: this.renderTick++ });
-    const drawFighter = (i: 0 | 1): void => {
-      const f: Fighter = s.fighters[i], old = this.previous.fighters[i];
-      const x = (old.x + (f.x - old.x) * alpha) / PX, y = (old.y + (f.y - old.y) * alpha) / PX;
-      const move = f.state === 'attack' && f.move ? getMove(f.char, f.move) ?? null : null;
-      const flash = (f.state === 'hitstun' || f.state === 'juggle') && f.stateFrame <= 2 ? 'hit' as const : null;
-      drawPuppet(ctx, SKINS[f.char], poseOf(clipFor(f, move)), sx(x), sy(y), f.facing,
-        { frame: s.frame, meterFull: f.meter >= METER_MAX, glow: f.meter >= METER_MAX, flash, squash: squashFor(f), mood: moodFor(f) });
-    };
-    for (const i of [0, 1] as const) {
-      const f = s.fighters[i], old = this.previous.fighters[i];
+    for (let i = 0; i < 2; i++) {
+      const f = s.fighters[i]!, old = this.previous.fighters[i]!;
       const x = (old.x + (f.x - old.x) * alpha) / PX, y = (old.y + (f.y - old.y) * alpha) / PX;
       drawShadow(ctx, sx(x), sy(0), y, SKINS[f.char].bones.torso.width * 0.9 + 6);
     }
     const superBy = this.fx.superLeft > 0 ? this.fx.superBy : null;
-    for (const i of [0, 1] as const) if (i !== superBy) drawFighter(i);
+    if (superBy !== 0) this.drawFighter(ctx, 0, alpha);
+    if (superBy !== 1) this.drawFighter(ctx, 1, alpha);
     for (const p of s.projectiles) drawProjectile(ctx, p, sx, sy, s.frame, SKINS[s.fighters[p.owner].char].accent);
     this.fx.drawDim(ctx);
-    if (superBy !== null) drawFighter(superBy);
+    if (superBy !== null) this.drawFighter(ctx, superBy, alpha);
     this.fx.draw(ctx, sx, sy);
     this.hud.draw(ctx, s);
   }
   dispose(): void {
     this.leaveOnline();
-    this.loop.dispose(); this.keyboard.dispose(); this.touch.dispose(); this.gamepad.dispose(); this.canvas.dispose();
+    this.loop.dispose(); this.keyboard.dispose(); this.touch.dispose(); this.gamepad.dispose(); this.canvas.dispose(); this.fps?.dispose(); this.fps = null;
     this.hideUi(); this.ui.remove();
     this.removeGestureListeners();
     document.removeEventListener('visibilitychange', this.onVisibility);

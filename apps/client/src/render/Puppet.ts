@@ -59,16 +59,20 @@ function hexRgb(c: string): [number, number, number] {
   const n = parseInt(c.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
-const mixCache = new Map<string, string>();
+const mixCache = new Map<string, Map<string, Map<number, string>>>();
 /** Blend hex `c` towards `to` by `k`. Results are memoised so the hot draw path allocates no new strings. */
 export function mix(c: string, to: string, k: number): string {
   if (!c.startsWith('#') || c.length !== 7) return c;
-  const key = `${c}${to}${k}`;
-  const hit = mixCache.get(key);
+  // Nested lookup (colour -> target -> amount): no string is built on the hot path.
+  let byTo = mixCache.get(c);
+  if (!byTo) { byTo = new Map(); mixCache.set(c, byTo); }
+  let byK = byTo.get(to);
+  if (!byK) { byK = new Map(); byTo.set(to, byK); }
+  const hit = byK.get(k);
   if (hit !== undefined) return hit;
   const a = hexRgb(c), b = hexRgb(to);
   const out = `#${a.map((v, i) => Math.round(v + (b[i]! - v) * k).toString(16).padStart(2, '0')).join('')}`;
-  if (mixCache.size < 4096) mixCache.set(key, out); // bounded: tints/shades come from a small fixed palette
+  if (byK.size < 64) byK.set(k, out); // bounded: tints/shades come from a small fixed palette
   return out;
 }
 /** Darken a hex colour by `pct` percent (B-limb shade = 25). */
@@ -208,6 +212,18 @@ export interface PuppetOpts {
   mood?: Mood;
 }
 
+// Hoisted out of drawPuppet so no closures are allocated per draw (decision 0014).
+function limb(ctx: CanvasRenderingContext2D, skin: Skin, b: Bones, k: BoneId, back: boolean): void { capsule(ctx, b[k], skin.bones[k].width, skin.bones[k].color, back); }
+function fist(ctx: CanvasRenderingContext2D, skin: Skin, b: Bones, k: 'fistF' | 'fistB', back: boolean): void {
+  const S = skin.bones[k];
+  if (skin.drawFist) skin.drawFist(ctx, b[k], back, curInfo!); else defaultFist(ctx, b[k], back ? shade(S.color) : S.color, S.width / 2);
+}
+function foot(ctx: CanvasRenderingContext2D, skin: Skin, b: Bones, k: 'footF' | 'footB', back: boolean): void {
+  const S = skin.bones[k];
+  if (skin.drawFoot) skin.drawFoot(ctx, b[k], back, curInfo!); else defaultFoot(ctx, b[k], back ? shade(S.color) : S.color, S.width);
+}
+let curInfo: DrawInfo | null = null;
+
 /** Draw a puppet with its feet at screen (x, y). Draw order per spec §9.2. */
 export function drawPuppet(ctx: CanvasRenderingContext2D, skin: Skin, pose: Pose, x: number, y: number, facing: 1 | -1, opts: PuppetOpts = {}): void {
   const frame = opts.frame ?? 0;
@@ -216,16 +232,11 @@ export function drawPuppet(ctx: CanvasRenderingContext2D, skin: Skin, pose: Pose
   outlineColor = pulseOn ? skin.accent : skin.outline;
   tint = opts.flash === 'hit' ? HIT_TINT : opts.flash === 'counter' ? COUNTER_TINT : null;
   const info: DrawInfo = { frame, meterFull: opts.meterFull ?? false, outline: outlineColor, jawOpen: opts.extra?.jaw ?? pose.a.jaw ?? 0, mood: opts.mood ?? 'normal' };
+  curInfo = info;
   ctx.save();
   const sq = opts.squash ?? 0, sc = opts.scale ?? 1;
   ctx.translate(x, y); ctx.scale(facing * sc * (1 + sq), sc * (1 - sq));
   if (opts.spin) { ctx.translate(b.root.x0, b.root.y0); ctx.rotate(opts.spin * RAD); ctx.translate(-b.root.x0, -b.root.y0); }
-  const S = skin.bones;
-  const limb = (k: BoneId, back: boolean): void => capsule(ctx, b[k], S[k].width, S[k].color, back);
-  const fist = (k: 'fistF' | 'fistB', back: boolean): void =>
-    skin.drawFist ? skin.drawFist(ctx, b[k], back, info) : defaultFist(ctx, b[k], back ? shade(S[k].color) : S[k].color, S[k].width / 2);
-  const foot = (k: 'footF' | 'footB', back: boolean): void =>
-    skin.drawFoot ? skin.drawFoot(ctx, b[k], back, info) : defaultFoot(ctx, b[k], back ? shade(S[k].color) : S[k].color, S[k].width);
   if (skin.scarf) {
     const sc = skin.scarf;
     (['scarf4', 'scarf3', 'scarf2', 'scarf1'] as const).forEach((k, i) => { const s = b[k]; if (s) capsule(ctx, s, sc.width - i, shade(sc.color, 10 + i * 6)); });
@@ -239,12 +250,12 @@ export function drawPuppet(ctx: CanvasRenderingContext2D, skin: Skin, pose: Pose
     }
   }
   skin.drawBack?.(ctx, b, info);
-  limb('uArmB', true); limb('fArmB', true); fist('fistB', true);
-  limb('thighB', true); limb('shinB', true); foot('footB', true);
+  limb(ctx, skin, b, 'uArmB', true); limb(ctx, skin, b, 'fArmB', true); fist(ctx, skin, b, 'fistB', true);
+  limb(ctx, skin, b, 'thighB', true); limb(ctx, skin, b, 'shinB', true); foot(ctx, skin, b, 'footB', true);
   skin.drawTorso(ctx, b, info);
-  limb('thighF', false); limb('shinF', false); foot('footF', false);
+  limb(ctx, skin, b, 'thighF', false); limb(ctx, skin, b, 'shinF', false); foot(ctx, skin, b, 'footF', false);
   skin.drawHead(ctx, b, info);
-  limb('uArmF', false); limb('fArmF', false); fist('fistF', false);
+  limb(ctx, skin, b, 'uArmF', false); limb(ctx, skin, b, 'fArmF', false); fist(ctx, skin, b, 'fistF', false);
   skin.drawFront?.(ctx, b, info);
   ctx.restore();
   tint = null; outlineColor = '#1b1b2a';

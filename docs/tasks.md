@@ -29,7 +29,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | S14 | Touch controls + gamepad + iPad PWA + play script | S13 | IMPLEMENTED – DEVICE CHECK PENDING | e1abc90 | docs/test-results/S14.md |
 | S15 | Browser tests, polish pass, release checklist | S14 | IMPLEMENTED – DEVICE CHECK PENDING (decision 0011; release checklist NOT RUN) | a1428e5 | docs/test-results/S15.md |
 | TXT | Text, menus, settings, admin page (owner request) | S15 | DONE (decision 0013; gamepad/iPad NOT RUN) | c6c954b | docs/test-results/TXT.md |
-| PERF | Render performance (decision 0014) | TXT | TODO | | docs/test-results/PERF.md |
+| PERF | Render performance (decision 0014) | TXT | DONE | HASH_PLACEHOLDER | docs/test-results/PERF.md |
 | SEL | 3D-style rotating character select (owner request) | PERF | TODO | | docs/test-results/SEL.md |
 | CTRL | One-button specials + super button, faster meter | PERF | TODO | | docs/test-results/CTRL.md |
 | PLAT | One-way platforms in sim + stages | CTRL | TODO | | docs/test-results/PLAT.md |
