@@ -34,7 +34,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | CTRL | One-button specials + super button, faster meter | PERF | DONE | 68cdb80 | docs/test-results/CTRL.md |
 | PLAT | One-way platforms in sim + stages | CTRL | DONE | fdff6a7 | docs/test-results/PLAT.md |
 | FX | High-quality game-feel effects | PLAT | DONE | ce25d7c | docs/test-results/FX.md |
-| TUNE | Balance + CPU for specials/platforms | FX | TODO | | docs/test-results/TUNE.md |
+| TUNE | Balance + CPU for specials/platforms | FX | DONE | HASHX | docs/test-results/TUNE.md |
 
 S12 can run in parallel with S8–S11 (different files).
 
@@ -211,7 +211,7 @@ RESOLVED by decision 0006
 **Prerequisites:** CTRL DONE.
 **Files:** new `packages/shared/src/sim/platforms.ts`, `packages/shared/src/sim/{physics.ts,fighter.ts,types.ts,state.ts,constants.ts,step.ts}`, `packages/shared/src/ai/cpu.ts`, `apps/client/src/render/stages/*.ts`, `apps/client/src/render/Camera.ts`, `tests/unit/platforms.test.ts`.
 **Steps:**
-1. `platforms.ts`: `export interface Platform { x0: number; x1: number; y: number }` (sim units). `PLATFORMS: Record<StageId, readonly Platform[]>`. Heights: compute `minApex` = the lowest neutral-jump apex across CHARS (a sim run in the test). `LOW = floor(minApex*0.55 / 100)*100`, `HIGH = floor(minApex*1.05 / 100)*100`. Layout for every stage: two LOW platforms `[-34000,-16000]` and `[16000,34000]`, one HIGH `[-9000,9000]`. Record the computed numbers in PLAT.md as constants (hardcode them; never compute at runtime).
+1. `platforms.ts`: `export interface Platform { x0: number; x1: number; y: number }` (sim units). `PLATFORMS: Record<StageId, readonly Platform[]>`. Heights: compute `minApex` = the lowest neutral-jump apex across CHARS (a sim run in the test). `LOW = floor(minApex*0.55 / 100)*100`, `HIGH = floor(minApex*0.92 / 100)*100 (was 1.05; changed by TUNE, decision 0018)`. Layout for every stage: two LOW platforms `[-34000,-16000]` and `[16000,34000]`, one HIGH `[-9000,9000]`. Record the computed numbers in PLAT.md as constants (hardcode them; never compute at runtime).
 2. Fighter fields: `platform: number` (-1 = none or the ground), `dropTimer: number`. Add them to `state.ts` init, the snapshot/hash and the protocol snapshot schema if the fields are listed explicitly there.
 3. Landing (physics): when airborne and `vy < 0`, if `prevY >= p.y && y <= p.y && x in [x0,x1]` and `dropTimer == 0` → land on p (y = p.y, same landing code as the ground, `platform = index`). Check the platforms before the ground; highest first.
 4. Walking or being pushed off the edge (`platform >= 0`, x outside the span) → `airborne = true`, `vy = 0`, `state = "air"`, `platform = -1`, no jump consumed.

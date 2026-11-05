@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { CHARS, getMove, type CharId, type MoveDef } from "../../packages/shared/src/index.js";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { AUTHORED_CHARS, CHARS, getMove, setTuning, type CharId, type MoveDef } from "../../packages/shared/src/index.js";
 import { HK, HP, LK, LP } from "../../packages/shared/src/input/buttons.js";
 import type { MatchState } from "../../packages/shared/src/sim/types.js";
 import { at } from "../helpers/fight.js";
@@ -21,7 +21,21 @@ function superTotal(m: MoveDef): number {
 }
 const supers = (c: CharId) => CHARS[c].moves.filter((m) => m.kind === "super");
 
-describe("balance guardrails (characters.md §9)", () => {
+describe("balance guardrails (characters.md §9), on shipped tuned data (decision 0018)", () => {
+  beforeAll(() => setTuning(true));
+  afterAll(() => setTuning(false));
+  it("tuning stays within +-10 % of the authored damage and recovery of every move", () => {
+    for (const c of ids) for (const m of CHARS[c].moves) {
+      const a = AUTHORED_CHARS[c].moves.find((x) => x.id === m.id)!;
+      expect(m.recovery, `${c} ${m.id} recovery`).toBeGreaterThanOrEqual(Math.floor(a.recovery * 0.9));
+      expect(m.recovery, `${c} ${m.id} recovery`).toBeLessThanOrEqual(Math.ceil(a.recovery * 1.1));
+      m.hits.forEach((h, i) => {
+        const d = a.hits[i]!.damage;
+        expect(h.damage, `${c} ${m.id} hit ${i}`).toBeGreaterThanOrEqual(Math.floor(d * 0.9));
+        expect(h.damage, `${c} ${m.id} hit ${i}`).toBeLessThanOrEqual(Math.ceil(d * 1.1));
+      });
+    }
+  });
   it("rule 1: every 5LP is +1..+3 on block; 5HP/5HK/2HK are −3..−12", () => {
     for (const c of ids) {
       const lp = onBlock(mv(c, "5LP"));

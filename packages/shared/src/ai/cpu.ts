@@ -111,11 +111,15 @@ function decide(cpu: CpuState, s: MatchState): number[] {
   const toward = opp.x > me.x ? 1 : -1;
   const c = me.char;
   // Platforms: jump up toward an opponent standing on a higher platform; drop when the opponent is far below.
-  if (me.platform < 0 && opp.platform >= 0 && opp.y > me.y && dist <= 12000) return [UP, 0, 0, 0, 0, 0];
+  // Recovery uses the character's "up SP" (a rising DP special) when it has one, else a plain jump.
+  if (me.platform < 0 && opp.platform >= 0 && opp.y > me.y && dist <= 12000) {
+    const rise = findAntiAir(c);
+    return rise && t.combos ? macroFor(rise) : [UP, 0, 0, 0, 0, 0];
+  }
   if (me.platform >= 0 && opp.platform < 0 && !opp.airborne && dist > 15000) return [DOWN, 0, DOWN, 0, 0, 0];
-  // Super: meter full, opponent in hitstun within range.
+  // Super (one button for players; the CPU still plays the motion): meter full and the opponent in range.
   const sup = findSuper(c);
-  if (sup && me.meter >= METER_MAX && (opp.state === "hitstun" || opp.state === "juggle") && dist < 20000) return macroFor(sup);
+  if (sup && me.meter >= METER_MAX && dist < 20000 && (t.combos || opp.state === "hitstun")) return macroFor(sup);
   // Anti-air: opponent airborne, approaching, within 160 px.
   if (opp.airborne && dist < 16000 && opp.vx * toward < 0) {
     const aa = findAntiAir(c);

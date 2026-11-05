@@ -30,6 +30,8 @@ describe("S6 Bolt specials", () => {
   });
   it("jackhammerRise.L is ≤ -20 on block", () => {
     const s = at(50);
+    // Off the centre HIGH platform (x +-90 px; LOW ones start at 160 px): the rise would otherwise land on it early.
+    for (const f of s.fighters) f.x += 12000;
     runFrames(s, dp(LP));
     let n = 0;
     while (p2(s).state !== "blockstun" && n++ < 20) runFrames(s, [[0, RIGHT]]);

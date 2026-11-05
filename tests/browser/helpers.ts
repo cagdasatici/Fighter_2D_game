@@ -1,14 +1,14 @@
 import { expect, type Page } from "@playwright/test";
 
-export interface KbView { frame: number; phase: string; hp: [number, number]; comboHits: [number, number]; x: [number, number]; chars: [string, string] }
+export interface KbView { frame: number; phase: string; hp: [number, number]; comboHits: [number, number]; x: [number, number]; platform: [number, number]; chars: [string, string] }
 
 /** Read a plain snapshot of window.__kb.state (dev builds only). */
 export async function kb(page: Page): Promise<KbView | null> {
   return await page.evaluate(() => {
-    const k = (window as unknown as { __kb?: { state: { frame: number; phase: string; fighters: { hp: number; comboHits: number; x: number; char: string }[] } } }).__kb;
+    const k = (window as unknown as { __kb?: { state: { frame: number; phase: string; fighters: { hp: number; comboHits: number; x: number; platform: number; char: string }[] } } }).__kb;
     if (!k) return null;
     const s = k.state, f = s.fighters;
-    return { frame: s.frame, phase: s.phase, hp: [f[0]!.hp, f[1]!.hp], comboHits: [f[0]!.comboHits, f[1]!.comboHits], x: [f[0]!.x, f[1]!.x], chars: [f[0]!.char, f[1]!.char] };
+    return { frame: s.frame, phase: s.phase, hp: [f[0]!.hp, f[1]!.hp], comboHits: [f[0]!.comboHits, f[1]!.comboHits], x: [f[0]!.x, f[1]!.x], platform: [f[0]!.platform, f[1]!.platform], chars: [f[0]!.char, f[1]!.char] };
   });
 }
 

@@ -30,7 +30,7 @@ describe("PLAT constants", () => {
     }
     expect(minApex).toBe(PLATFORM_MIN_APEX);
     expect(PLATFORM_LOW).toBe(Math.floor((minApex * 55) / 10000) * 100);
-    expect(PLATFORM_HIGH).toBe(Math.floor((minApex * 105) / 10000) * 100);
+    expect(PLATFORM_HIGH).toBe(Math.floor((minApex * 92) / 10000) * 100);
   });
 });
 

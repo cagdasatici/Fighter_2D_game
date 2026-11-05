@@ -7,7 +7,7 @@ Commands run (real output):
 - `pnpm build` built ok
 - `pnpm test:browser` 6 passed (cpu-match, menus x2, online two tabs rollback, perf x3 stages avg 16.7-17.5 ms under 4x throttle, title)
 
-Platform constants (sim units, 100 = 1 px): minApex 11760 (chompa, jumpVy 1500, gravity 90), LOW y 6400, HIGH y 12300.
+Platform constants (sim units, 100 = 1 px): minApex 11760 (chompa, jumpVy 1500, gravity 90), LOW y 6400, HIGH y 10800 (lowered by TUNE, decision 0018).
 Layout (all stages): HIGH x [-9000, 9000]; LOW x [-34000, -16000] and [16000, 34000].
 Drop-through: 2 DOWN presses within 12 frames, dropTimer 10, vy -100.
 
