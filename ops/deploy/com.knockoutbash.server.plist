@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- User LaunchAgent for fighter.cagdasatici.com. Install: copy to ~/Library/LaunchAgents/ and
+     `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.knockoutbash.server.plist`. See docs/deployment-runbook.md. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.knockoutbash.server</string>
+  <key>WorkingDirectory</key><string>/Users/cagdas/Projects/Fighter_2D_game/.worktrees/prod</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>/Users/cagdas/Projects/Fighter_2D_game/.worktrees/prod/ops/deploy/run-prod.sh</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>KB_ENV_FILE</key><string>/Users/cagdas/kb-env</string>
+    <key>PATH</key><string>/opt/homebrew/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>StandardOutPath</key><string>/Users/cagdas/kb-logs/server.log</string>
+  <key>StandardErrorPath</key><string>/Users/cagdas/kb-logs/server.err.log</string>
+</dict>
+</plist>
