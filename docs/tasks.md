@@ -35,6 +35,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | PLAT | One-way platforms in sim + stages | CTRL | DONE | fdff6a7 | docs/test-results/PLAT.md |
 | FX | High-quality game-feel effects | PLAT | DONE | ce25d7c | docs/test-results/FX.md |
 | TUNE | Balance + CPU for specials/platforms | FX | DONE | f1bfbc9 | docs/test-results/TUNE.md |
+| PERF1 | Cut volcano stage frame spikes (render only) | TUNE | DONE (target p95 gap NOT closed, see PERF1.md) | HASH | docs/test-results/PERF1.md |
 
 S12 can run in parallel with S8–S11 (different files).
 
@@ -260,3 +261,8 @@ RESOLVED by decision 0006
 **Tests:** ring math: the focused index has z = 1 and is drawn last; rotating 5 steps returns to the start; the yaw flip rule (cos < 0 → facing inverted); the draw order with yaw 0 matches the current draw order.
 **Visual check:** screenshot `docs/test-results/SEL.png`. **STOP and report** for owner approval.
 **Commit:** `SEL: add rotating turntable carousel character select`
+
+## PERF1 — Volcano stage frame spikes
+
+**Scope:** `apps/client/src/render/stages/volcano.ts` only. Bisected with `VITE_CUT` early returns under the 4x throttle (temporary, removed): sky only 7.3 ms main-thread/frame; + smoke 8.4; + mountain layer and lava streams 11.2; + ridge/embers/ferns/floor 12.4. Changes: mountain + lava streams baked into one 540x370 bitmap (was 880x370), embers batched into 4 fills, floor lava cracks baked once and pulsed with globalAlpha.
+**Commit:** `PERF1: cut volcano stage frame spikes`
