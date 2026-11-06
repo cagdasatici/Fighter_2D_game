@@ -4,11 +4,11 @@ import { button, el, focusFirst, menuNav, screen } from './dom.js';
 import type { KeyMap } from './Settings.js';
 import { keyLabel } from './text.js';
 
-const MOTION: Readonly<Record<MoveDef['input']['motion'], string>> = {
+export const MOTION: Readonly<Record<MoveDef['input']['motion'], string>> = {
   none: '', qcf: '↓↘→', qcb: '↓↙←', dp: '→↓↘', dqcf: '↓↘→↓↘→', dd: '↓↓', spin: '360°', charge: '[←] →',
 };
 const DIR: Readonly<Record<number, string>> = { 6: '→', 3: '↘', 2: '↓', 4: '←' };
-/** Dev/debug only: not shown to players (decision 0014). Notation for a move, e.g. "↓↘→ + P" (characters.md notation). */
+/** Notation for a move, e.g. "↓↘→ + HP" (characters.md notation). Shown in the HELP1 move lists (owner request overrides the decision 0014 dev-only note). */
 export function notation(m: MoveDef, generic = false): string {
   const btn = generic && /^(LP|HP)$/.test(m.input.button) ? 'P' : generic && /^(LK|HK)$/.test(m.input.button) ? 'K' : m.input.button;
   const pre = m.input.motion === 'none' ? (m.input.dir !== null ? DIR[m.input.dir] ?? '' : '') : MOTION[m.input.motion];
@@ -17,13 +17,17 @@ export function notation(m: MoveDef, generic = false): string {
 }
 
 const SP_LABEL: Readonly<Record<SpDir, string>> = { neutral: 'SP / →SP', up: '↑SP', back: '←SP', down: '↓SP' };
-/** Touch easy-special list for one character (characters.md SP macros), e.g. ["SP", "Rivet Shot"]. Pure. */
+/** Move display name + motion notation, e.g. "Rivet Shot (↓↘→ + HP)". Pure. */
+export function moveText(id: CharId, move: string): string {
+  const m = getMove(id, move);
+  return m ? `${m.name} (${notation(m)})` : move;
+}
+/** Touch easy-special list for one character (characters.md SP macros), e.g. ["SP", "Rivet Shot (↓↘→ + HP)"]. Pure. */
 export function easySpecials(id: CharId): [string, string][] {
   const t = SP_TABLE[id];
-  const name = (move: string): string => getMove(id, move)?.name ?? move;
-  const rows: [string, string][] = (['neutral', 'up', 'back', 'down'] as const).map(d => [SP_LABEL[d], name(t[d].move)]);
-  if (t.down.move !== t.downUncharged.move) rows[3] = [SP_LABEL.down, `${name(t.down.move)} (after holding ← ~1 s), else ${name(t.downUncharged.move)}`];
-  rows.push(['SUPER', `${name(t.superMove)} (full meter)`]);
+  const rows: [string, string][] = (['neutral', 'up', 'back', 'down'] as const).map(d => [SP_LABEL[d], moveText(id, t[d].move)]);
+  if (t.down.move !== t.downUncharged.move) rows[3] = [SP_LABEL.down, `${moveText(id, t.down.move)} (after holding ← ~1 s), else ${moveText(id, t.downUncharged.move)}`];
+  rows.push(['SUPER', `${moveText(id, t.superMove)} (full meter)`]);
   return rows;
 }
 
@@ -41,7 +45,7 @@ export function showHowToPlay(root: HTMLElement, keys: [KeyMap, KeyMap], back: (
       ['Throw', 'Light Punch + Light Kick up close.'],
       ['Dash', 'Tap forward twice (or back twice to dodge back).'],
       ['Super', 'Fill all 4 meter segments, then press SUPER.'],
-      ['Specials', 'Press SP. Hold ↑, ← or ↓ with SP for a different special.'],
+      ['Specials', 'Press SP. Hold ↑, ← or ↓ with SP for a different special. Pause → Move List shows every motion.'],
     ])],
     Keyboard: () => [list([
       ['Move', `P1 ${k(p1.up)} ${k(p1.left)} ${k(p1.down)} ${k(p1.right)} · P2 ${k(p2.up)} ${k(p2.left)} ${k(p2.down)} ${k(p2.right)}`],

@@ -37,6 +37,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | TUNE | Balance + CPU for specials/platforms | FX | DONE | f1bfbc9 | docs/test-results/TUNE.md |
 | TUNE2 | CPU style rebalance for Kaze/Bao matchups | TUNE | DONE | 9395eca | docs/test-results/TUNE2.md |
 | PERF1 | Cut volcano stage frame spikes (render only) | TUNE | DONE (target p95 gap NOT closed, see PERF1.md) | ac0f5c8 | docs/test-results/PERF1.md |
+| HELP1 | Pause move list, in-match hints, motion notation | TUNE2 | DONE (browser screenshots only; device checks NOT RUN) | PENDING | docs/test-results/HELP1.md |
 
 S12 can run in parallel with S8–S11 (different files).
 
@@ -273,3 +274,8 @@ RESOLVED by decision 0006
 
 **Scope:** `apps/client/src/render/stages/volcano.ts` only. Bisected with `VITE_CUT` early returns under the 4x throttle (temporary, removed): sky only 7.3 ms main-thread/frame; + smoke 8.4; + mountain layer and lava streams 11.2; + ridge/embers/ferns/floor 12.4. Changes: mountain + lava streams baked into one 540x370 bitmap (was 880x370), embers batched into 4 fills, floor lava cracks baked once and pulsed with globalAlpha.
 **Commit:** `PERF1: cut volcano stage frame spikes`
+
+## HELP1 — Move discovery (owner request 2026-11-06)
+**Prerequisites:** TUNE2 DONE. **Files:** client UI only: `apps/client/src/ui/{HowToPlay,Pause,Settings,MoveList,Hints}.ts`, `apps/client/src/app/AppFlow.ts`, `tests/unit/help1.test.ts`, `tests/browser/help1-shots.spec.ts`. No sim or ai changes.
+**Steps:** (1) Pause > Move List: per paused human player, each special with motion notation + SP shortcut, throw (LP+LK, tech), super (motion or SU), with bound key/pad/touch labels. (2) Once-per-match hints per local player (super ready, first time in `THROW_RANGE`, round 1 start), about 2 s with fade, Settings > Hints toggle (default on, persisted). Drawn in render from a pure tracker fed per sim frame. (3) How to Play > Moves/Touch lists show notation. Owner request overrides the dev-only note on `notation()` (decision 0014).
+**Commit:** `HELP1: add pause move list, in-match hints and motion notation`

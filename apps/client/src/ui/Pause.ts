@@ -4,9 +4,10 @@ import { button, el, focusFirst, menuNav, screen } from './dom.js';
 export type PauseChoice = 'resume' | 'restart' | 'select' | 'title';
 
 /** Offline pause menu (online has no pause, spec §15). Training adds dummy and refill options. */
-export function showPause(root: HTMLElement, training: TrainingOptions | null, pick: (c: PauseChoice) => void): () => void {
+export function showPause(root: HTMLElement, training: TrainingOptions | null, pick: (c: PauseChoice) => void, moveList?: () => void): () => void {
   const menu = el('div', { class: 'kb-menu' }, [
     button('Resume', () => pick('resume')), button(training ? 'Reset Positions' : 'Restart Match', () => pick('restart')),
+    ...(moveList ? [button('Move List', moveList)] : []),
     button('Character Select', () => pick('select')), button('Quit to Title', () => pick('title'))]);
   const kids: HTMLElement[] = [menu];
   if (training) {

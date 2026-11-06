@@ -26,6 +26,9 @@ import { AdvantageMeter, advantageText, applyTrainingRefills, dummyInput, type T
 import { showCharSelect } from '../ui/CharSelect.js';
 import { showHowToPlay } from '../ui/HowToPlay.js';
 import { showPause } from '../ui/Pause.js';
+import { showMoveList } from '../ui/MoveList.js';
+import { HintTracker, hintText } from '../ui/Hints.js';
+import { keyLabel } from '../ui/text.js';
 import { drawResults, showResults, type ResultsPanel } from '../ui/Results.js';
 import { DISCONNECTED_TEXT } from '../ui/text.js';
 import { loadSettings, showSettings, type Settings } from '../ui/Settings.js';
@@ -73,6 +76,8 @@ export class AppFlow {
   private resultsPanel: ResultsPanel | null = null;
   private readonly training: TrainingOptions = { dummy: 'stand', infiniteHp: true, infiniteMeter: false };
   private readonly advantage = new AdvantageMeter();
+  /** HELP1: once-per-match hints per fighter side; only the local sides are fed. */
+  private readonly hints: [HintTracker, HintTracker] = [new HintTracker(), new HintTracker()];
   private boxes: boolean;
   private fx = this.newFx();
   private hud = new Hud(this.state);
@@ -267,6 +272,7 @@ export class AppFlow {
       this.fx.consume(shown);
     }
     this.camera.update(this.state); this.fx.update(); this.hud.update(this.state);
+    if (this.settings.hints && this.state.frame !== before) this.hints[rb.you].update(this.state, rb.you);
     this.audio.setStage(this.state.phase === 'matchEnd' ? null : this.state.stage);
     if (rb.ended && ++this.sceneFrame >= 90) {
       this.state = { ...this.state, winner: rb.ended.winner };
@@ -290,11 +296,19 @@ export class AppFlow {
     if (this.scene !== 'fight' || this.net?.rb) return; // online has no pause
     if (this.paused) { this.paused = false; this.hideUi(); this.touch.setActive(true); return; }
     this.paused = true; this.touch.setActive(false);
+    this.showPauseMenu();
+  }
+  private showPauseMenu(): void {
     this.show(root => showPause(root, this.mode === 'training' ? this.training : null, c => {
       if (c === 'resume') { this.paused = false; this.hideUi(); this.touch.setActive(true); }
       else if (c === 'restart') { this.startMatch(); this.enterFight(); }
       else if (c === 'select') this.toSelect(); else this.toTitle();
-    }));
+    }, () => this.show(r => showMoveList(r, this.moveListPlayers(), () => this.showPauseMenu()))));
+  }
+  private moveListPlayers(): { label: string; char: CharId; keys: Settings['keys'][0]; p: 0 | 1 }[] {
+    const ps: { label: string; char: CharId; keys: Settings['keys'][0]; p: 0 | 1 }[] = [{ label: 'Player 1', char: this.state.fighters[0].char, keys: this.settings.keys[0], p: 0 }];
+    if (this.mode === 'local') ps.push({ label: 'Player 2', char: this.state.fighters[1].char, keys: this.settings.keys[1], p: 1 });
+    return ps;
   }
 
   /** Fresh match + CPU memory. Seeds are a local counter (offline only; online seeds come from the server). */
@@ -305,6 +319,7 @@ export class AppFlow {
     this.cpu = this.mode === 'cpu' ? createCpu({ side: 1, difficulty: this.settings.difficulty, matchSeed: seed }) : null;
     this.fx = this.newFx(); this.hud = new Hud(this.state); this.camera.update(this.state);
     this.advantage.last = null;
+    this.hints[0].reset(); this.hints[1].reset();
   }
 
   private tick(): void {
@@ -327,6 +342,7 @@ export class AppFlow {
     step(this.state, inputs);
     if (this.mode === 'training') { applyTrainingRefills(this.state, this.training); this.advantage.observe(this.state); }
     this.camera.update(this.state);
+    if (this.settings.hints) { this.hints[0].update(this.state, 0); if (this.mode === 'local') this.hints[1].update(this.state, 1); }
     // Exactly-once event consumption: Fx.lastFxFrame guards both FX and SFX (decision 0005).
     if (this.state.frame !== this.fx.lastFxFrame) for (const c of cuesForFrame(this.previous, this.state)) this.audio.play(c.kind, c.priority, 0, c.rate);
     this.fx.consume(this.state); this.fx.update(); this.hud.update(this.state);
@@ -347,6 +363,7 @@ export class AppFlow {
     }
     if (this.boxes) drawDebug(ctx, this.state, this.previous, alpha, this.camera, true);
     else this.drawScene(ctx, alpha);
+    if (this.settings.hints) this.drawHints(ctx);
     if (this.mode === 'training') {
       ctx.font = 'bold 14px system-ui'; ctx.textAlign = 'left'; ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#1b1b2a'; ctx.lineWidth = 3;
       const text = `FRAME ADV ${advantageText(this.advantage.last)}`;
@@ -355,6 +372,21 @@ export class AppFlow {
     if (import.meta.env.DEV && this.net?.rb) {
       ctx.font = 'bold 12px system-ui'; ctx.textAlign = 'right'; ctx.fillStyle = '#ffffff';
       ctx.fillText(`RTT ${Math.round(this.net.clock.rttMs)} ms${this.net.rb.stalled ? ' STALL' : ''}`, WIDTH - 8, HEIGHT - 8);
+    }
+  }
+  /** HELP1: read-only render of the current hint per local side (never touches the sim). */
+  private drawHints(ctx: CanvasRenderingContext2D): void {
+    const sides: (0 | 1)[] = this.net?.rb ? [this.net.rb.you] : this.mode === 'local' ? [0, 1] : [0];
+    ctx.font = 'bold 15px system-ui'; ctx.lineWidth = 4; ctx.strokeStyle = '#1b1b2a'; ctx.textBaseline = 'alphabetic';
+    for (const side of sides) {
+      const h = this.hints[side].current;
+      if (!h) continue;
+      const text = hintText(h.kind, keyLabel(this.settings.keys[this.net?.rb ? 0 : side].SU));
+      ctx.globalAlpha = h.alpha; ctx.fillStyle = '#ffe27a';
+      ctx.textAlign = side === 0 ? 'left' : 'right';
+      const x = side === 0 ? 16 : WIDTH - 16;
+      ctx.strokeText(text, x, 118); ctx.fillText(text, x, 118); // under the name tag, clear of the bottom meter
+      ctx.globalAlpha = 1;
     }
   }
   private removeGestureListeners(): void {
