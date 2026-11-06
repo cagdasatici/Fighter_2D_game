@@ -71,6 +71,9 @@ const findComboEnder = (c: CharId): MoveDef | undefined =>
 const findSuper = (c: CharId): MoveDef | undefined => CHARS[c].moves.find((m) => m.kind === "super");
 const findGrab = (c: CharId): MoveDef | undefined => specials(c).find((m) => m.grab !== null);
 
+const moveById = (c: CharId, id: string): MoveDef | undefined => CHARS[c].moves.find((m) => m.id === id);
+// Style knobs (percent). TODO(tune): re-tune with TUNE_N=200 pnpm vitest run tests/unit/winrate.test.ts.
+const KAZE_FAR_PROJ = 60, KAZE_DASH = 40, KAZE_OVERHEAD = 20, KAZE_LOW = 22;
 const ACTIONABLE = ["idle", "walkF", "walkB", "crouch"];
 const abs = (v: number): number => (v < 0 ? -v : v);
 const pct = (cpu: CpuState, p: number): boolean => rngInt(cpu, 100) < p;
@@ -122,13 +125,22 @@ function decide(cpu: CpuState, s: MatchState): number[] {
   if (sup && me.meter >= METER_MAX && dist < 20000 && (t.combos || opp.state === "hitstun")) return macroFor(sup);
   // Anti-air: opponent airborne, approaching, within 160 px.
   if (opp.airborne && dist < 16000 && opp.vx * toward < 0) {
+    const bc = c === "bao" && t.combos && pct(cpu, 30) ? moveById(c, "bambooCounter.L") : undefined; // characters.md bot style
+    if (bc) return macroFor(bc);
     const aa = findAntiAir(c);
     return aa && t.combos ? macroFor(aa) : [DOWN | HP];
   }
   if (dist > 26000) {
     const pr = findProjectile(c);
-    if (pr && !s.projectiles.some((p) => p.owner === cpu.side) && pct(cpu, 50)) return macroFor(pr);
+    if (pr && !s.projectiles.some((p) => p.owner === cpu.side) && pct(cpu, c === "kaze" ? KAZE_FAR_PROJ : 50)) return macroFor(pr);
+    if (c === "kaze" && pct(cpu, KAZE_DASH)) return [F, 0, F, 0, 0, 0]; // rushdown: dash in
     return pct(cpu, 25) ? [F, 0, F, 0, 0, 0] : [F, F, F, F, F, F];
+  }
+  if (c === "kaze" && dist < 9000) {
+    // Rushdown (characters.md bot style): mix the 6LK overhead and the 2LK low at close range, else fall through.
+    const r = rngInt(cpu, 100);
+    if (r < KAZE_OVERHEAD) return [F | LK];
+    if (r < KAZE_OVERHEAD + KAZE_LOW) return [DOWN | LK, 0, 0, DOWN | LK];
   }
   if (dist >= 9000) {
     if (pct(cpu, 15)) return [UP | F, UP | F, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, HK];

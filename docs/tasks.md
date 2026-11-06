@@ -35,6 +35,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | PLAT | One-way platforms in sim + stages | CTRL | DONE | fdff6a7 | docs/test-results/PLAT.md |
 | FX | High-quality game-feel effects | PLAT | DONE | ce25d7c | docs/test-results/FX.md |
 | TUNE | Balance + CPU for specials/platforms | FX | DONE | f1bfbc9 | docs/test-results/TUNE.md |
+| TUNE2 | CPU style rebalance for Kaze/Bao matchups | TUNE | DONE | (pending) | docs/test-results/TUNE2.md |
 
 S12 can run in parallel with S8–S11 (different files).
 
@@ -247,6 +248,12 @@ RESOLVED by decision 0006
 **Files:** `packages/shared/src/chars/*.ts`, `packages/shared/src/ai/cpu.ts`, `tests/unit/balance.test.ts`.
 **Steps:** run 200 CPU-hard vs CPU-hard matches per pair with fixed seeds (existing harness). Every pair's win rate must be in 40–60 %; adjust only damage, startup and recovery numbers in char data, ±10 % per value. The CPU uses `↑SP` to recover onto platforms, and uses SUPER when its meter is full and the opponent is in range. **STOP and report** if any pair stays outside 35–65 % after 3 tuning passes.
 **Commit:** `TUNE: rebalance specials and CPU for platforms and one-button super`
+
+## TUNE2 — CPU style rebalance (owner request 2026-11-06)
+**Prerequisites:** TUNE DONE. **Files:** `packages/shared/src/ai/cpu.ts` only (no char data, no render/FX/stage files).
+**Steps:** CPU-only fix for the two pairs TUNE left outside 35-65 % (Bolt v Kaze 76.5, Chompa v Bao 32.5). Kaze's damage is already at the +10 % cap, so no data change. Kaze: close-range mix of `6LK` overhead and `2LK` low (characters.md bot style), shuriken at 60 % when far. Bao: `bambooCounter.L` 30 % against a predicted jump-in (characters.md bot style). Integers only; reuses the CPU rng.
+**Tests:** `TUNE_N=200 pnpm vitest run tests/unit/winrate.test.ts`: every pair in 35-65 %. `cpu.test.ts` unchanged and passing.
+**Commit:** `TUNE2: rebalance CPU play for Kaze and Bao matchups`
 
 ## SEL — Rotating character select (owner request 2026-11-05)
 **Prerequisites:** PERF DONE. Inspired by battlegrounds' 3D select, but **no three.js** (no new deps; the fighters are 2D code-drawn puppets). Fake 3D only.
