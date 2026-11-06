@@ -37,7 +37,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | TUNE | Balance + CPU for specials/platforms | FX | DONE | f1bfbc9 | docs/test-results/TUNE.md |
 | TUNE2 | CPU style rebalance for Kaze/Bao matchups | TUNE | DONE | 9395eca | docs/test-results/TUNE2.md |
 | PERF1 | Cut volcano stage frame spikes (render only) | TUNE | DONE (target p95 gap NOT closed, see PERF1.md) | ac0f5c8 | docs/test-results/PERF1.md |
-| HELP1 | Pause move list, in-match hints, motion notation | TUNE2 | DONE (browser screenshots only; device checks NOT RUN) | PENDING | docs/test-results/HELP1.md |
+| HELP1 | Pause move list, in-match hints, motion notation | TUNE2 | DONE (browser screenshots only; device checks NOT RUN) | 19b32bc | docs/test-results/HELP1.md |
 
 S12 can run in parallel with S8–S11 (different files).
 
