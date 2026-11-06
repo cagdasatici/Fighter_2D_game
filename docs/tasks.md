@@ -35,7 +35,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | PLAT | One-way platforms in sim + stages | CTRL | DONE | fdff6a7 | docs/test-results/PLAT.md |
 | FX | High-quality game-feel effects | PLAT | DONE | ce25d7c | docs/test-results/FX.md |
 | TUNE | Balance + CPU for specials/platforms | FX | DONE | f1bfbc9 | docs/test-results/TUNE.md |
-| TUNE2 | CPU style rebalance for Kaze/Bao matchups | TUNE | DONE | (pending) | docs/test-results/TUNE2.md |
+| TUNE2 | CPU style rebalance for Kaze/Bao matchups | TUNE | DONE | 9395eca | docs/test-results/TUNE2.md |
 
 S12 can run in parallel with S8–S11 (different files).
 
