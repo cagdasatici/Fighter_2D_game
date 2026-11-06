@@ -292,5 +292,5 @@ RESOLVED by decision 0006
 **Steps:** drop `hardHatHop`, `coilWhip`, `tailSpin`, `smokeStep`, `rollingBun`. SP table: neutral/down = special 1 (H/L), up/back = special 2 (H/L). Move List and How to Play show `SP` and `↑ + SP`. Tests for removed moves deleted.
 **Known limits:** `invuln kind "projectile"` and charge motion remain in the engine but no move uses them now (the Chompa invulnerability-vs-projectile test was deleted). Touch P2 intentionally not implemented (owner: no two-player-touch use case). Not run on iPad or gamepad: NOT RUN.
 **Status:** DONE. **Tests:** `docs/test-results/CUT2.md`
-**Commit:** `CUT2: two specials per character`
+**Commit:** `CUT2: two specials per character` (hash f78a266)
 
