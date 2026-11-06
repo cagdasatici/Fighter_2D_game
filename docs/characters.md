@@ -6,6 +6,10 @@ Units: damage in HP points (fighters have ~1000), boxes in px local space (§6 o
 
 ---
 
+> **CUT2 (owner request 2026-11-06): each character now has exactly two specials.** Removed: `hardHatHop` (Bolt), `coilWhip` (Volt), `tailSpin` (Chompa), `smokeStep` (Kaze), `rollingBun` (Bao). Their tables below are historical and no longer in the data. `SP` = special 1, `↑ + SP` = special 2 (`↓`/`←` pick the light version). Balance tests pass unchanged; no retune was needed.
+
+---
+
 ## 1. Base normals (`packages/shared/src/chars/base.ts`)
 
 Every character starts from these 13 templates, then applies the overrides listed in its own section. `cancel` S = special+super, C = chain (same button repeats), — = none. Hitstop: light 8, heavy 11. `meterOnHit`: light 20, heavy 40.

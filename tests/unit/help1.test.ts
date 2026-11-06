@@ -9,27 +9,27 @@ import { DEFAULT_KEYS, defaultSettings, parseSettings } from "../../apps/client/
 const IDS = Object.keys(CHARS) as CharId[];
 
 describe("move list rows", () => {
-  it.each(IDS)("%s: 4 specials by name with SP, throw and super (no motions)", (id) => {
+  it.each(IDS)("%s: 2 specials by name with SP, throw and super (no motions)", (id) => {
     const rows = moveListRows(id, controlLabels(DEFAULT_KEYS[0], 0));
-    expect(rows).toHaveLength(6);
-    for (const [name, how] of rows.slice(0, 4)) { expect(name).not.toMatch(/[↓↘]|\+ (LP|HP|LK|HK)/); expect(how).toMatch(/SP \[/); }
-    expect(rows[4]![0]).toBe("Throw");
-    expect(rows[4]![1]).toContain("U + J"); // bound LP + LK
-    expect(rows[5]![0]).toMatch(/^Super: [^(]+$/);
-    expect(rows[5]![1]).toContain("O"); // bound SU key
+    expect(rows).toHaveLength(4);
+    for (const [name, how] of rows.slice(0, 2)) { expect(name).not.toMatch(/[↓↘]|\+ (LP|HP|LK|HK)/); expect(how).toMatch(/SP \[/); }
+    expect(rows[2]![0]).toBe("Throw");
+    expect(rows[2]![1]).toContain("U + J"); // bound LP + LK
+    expect(rows[3]![0]).toMatch(/^Super: [^(]+$/);
+    expect(rows[3]![1]).toContain("O"); // bound SU key
   });
   it("shows rebound keys; pad labels for both players, touch for P1 only", () => {
     const k = { ...DEFAULT_KEYS[1], SU: "KeyZ" };
     const p2 = moveListRows("bolt", controlLabels(k, 1));
-    expect(p2[5]![1]).toContain("Z");
-    expect(p2[5]![1]).toMatch(/pad RT/);
-    expect(p2[5]![1]).not.toMatch(/touch/);
+    expect(p2[3]![1]).toContain("Z");
+    expect(p2[3]![1]).toMatch(/pad RT/);
+    expect(p2[3]![1]).not.toMatch(/touch/);
     expect(p2[0]![1]).toMatch(/pad RB/);
-    expect(moveListRows("bolt", controlLabels(DEFAULT_KEYS[0], 0))[5]![1]).toMatch(/pad RT.*touch SUPER/);
+    expect(moveListRows("bolt", controlLabels(DEFAULT_KEYS[0], 0))[3]![1]).toMatch(/pad RT.*touch SUPER/);
   });
   it("Moves tab rows are plain SP + direction with move names, no motion notation", () => {
     expect(easySpecials("bolt")[0]).toEqual(["SP", "Rivet Shot"]);
-    expect(easySpecials("bolt")[3]![0]).toBe("↓ + SP");
+    expect(easySpecials("bolt")[1]).toEqual(["↑ + SP", "Jackhammer Rise"]);
     for (const id of IDS) for (const [, t] of easySpecials(id)) expect(t).not.toMatch(/\+ (LP|HP|LK|HK|P|K)\)/);
   });
 });

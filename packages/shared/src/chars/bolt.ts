@@ -28,13 +28,6 @@ export const BOLT: CharDef = {
         hit({ frames: [7, 15], box: box(5, 60, 40, 60), damage: lh(v, 50, 80), chip: 15, knockdown: true, launch: { vx: 200, vy: 1200 } }),
       ],
     })),
-    ...pair((v) => move({
-      id: `hardHatHop.${v}`, kind: "special", name: "Hard Hat Hop", input: { motion: "qcb", button: lh(v, "LK", "HK"), dir: null, stance: "stand" },
-      startup: 14, active: 6, recovery: 16, landingRecovery: 6, pose: "jumpTuck",
-      velocities: [{ frame: 1, vx: lh(v, 300, 500), vy: 1400 }], airborneFrames: [1, 36],
-      // KD on air hit only: handled by sim juggle rules (knockdown false here).
-      hits: [hit({ frames: [15, 20], box: box(0, -40, 55, 50), damage: 90, chip: 10, hitstun: 20, blockstun: 14, level: "overhead" })],
-    })),
     move({
       id: "demolitionDrive", kind: "super", name: "Demolition Drive", input: { motion: "dqcf", button: "P", dir: null, stance: "stand" },
       startup: 4, active: 20, recovery: 30, pose: "demolition",

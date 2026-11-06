@@ -49,19 +49,6 @@ describe("S6 Bolt specials", () => {
     expect(p1(setup(false)).hp).toBeLessThan(1000);
     expect(p1(setup(true)).hp).toBe(1000);
   });
-  it("hardHatHop: 90 on hit, overhead (stand-blockable); box 0,-40,55,50 hits crouchers (decision 0003)", () => {
-    const s = at(50);
-    runFrames(s, qcb(LK));
-    expect(p1(s).move).toBe("hardHatHop.L");
-    runFrames(s, hold(0, 0, 20));
-    expect(p2(s).hp).toBe(910);
-    const b = at(50);
-    runFrames(b, [...qcb(LK), ...hold(0, RIGHT, 20)]);
-    expect(p2(b).hp).toBe(990);
-    const c = at(50);
-    runFrames(c, [...qcb(LK), ...hold(0, 2 | RIGHT, 20)]);
-    expect(p2(c).hp).toBe(910); // crouch-blocking an overhead fails
-  });
   it("demolitionDrive lockOnHit: 4×50 + 130 = 330, positions locked, final launch", () => {
     const s = at(100);
     begin(s, 0, "demolitionDrive");

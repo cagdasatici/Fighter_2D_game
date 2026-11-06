@@ -51,11 +51,10 @@ describe("TXT menus", () => {
     expect(nextIndex(-1, 4, true)).toBe(0); expect(nextIndex(-1, 4, false)).toBe(3);
     expect(nextIndex(3, 4, true)).toBe(0); expect(nextIndex(0, 4, false)).toBe(3); expect(nextIndex(0, 0, true)).toBe(-1);
   });
-  it("touch easy-special list uses move names from data, incl. charge fallback and super", () => {
+  it("touch easy-special list uses move names from data, two specials and super", () => {
     const c = easySpecials("chompa");
-    expect(c).toHaveLength(5);
-    expect(c[3]![1]).toMatch(/after holding/);
-    expect(c[4]![0]).toBe("SUPER");
+    expect(c).toHaveLength(3);
+    expect(c[2]![0]).toBe("SUPER");
     for (const [, name] of easySpecials("bolt")) expect(name).not.toMatch(/\./); // display names, not ids like rivetShot.H
   });
 });

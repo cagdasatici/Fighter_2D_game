@@ -25,14 +25,6 @@ export const VOLT: CharDef = {
       startup: 14, active: 0, recovery: 28, pose: "cast",
       projectile: proj({ spawnFrame: 14, offset: { x: 45, y: 70 }, vx: lh(v, 250, 420), w: 26, h: 26, lifetime: 180, hits: 2, hitInterval: 10, damage: 60, chip: 10, hitstun: 16, blockstun: 12, pushback: 900, meterOnHit: 25, kind: "spark" }),
     })),
-    ...pair((v) => {
-      const s = lh(v, 11, 14);
-      return move({
-        id: `coilWhip.${v}`, kind: "special", name: "Coil Whip", input: { motion: "qcb", button: lh(v, "LP", "HP"), dir: null, stance: "stand" },
-        startup: s, active: 4, recovery: 22, pose: "whip", hurtExtend: box(40, 60, 90, 14),
-        hits: [hit({ frames: [s + 1, s + 4], box: box(40, 60, lh(v, 110, 140), 14), damage: 80, chip: 8, hitstun: 20, blockstun: 15, pushback: 1600 })],
-      });
-    }),
     ...pair((v) => move({
       id: `liveWireHop.${v}`, kind: "special", name: "Live Wire Hop", input: { motion: "dp", button: lh(v, "LK", "HK"), dir: null, stance: "stand" },
       startup: 5, active: 18, recovery: 20, landingRecovery: 12, pose: "rise",

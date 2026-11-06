@@ -28,16 +28,6 @@ export const CHOMPA: CharDef = {
       // TODO(S3 gap): egg lifetime not in characters.md; provisional 120.
       projectile: proj({ spawnFrame: 16, offset: { x: 20, y: 90 }, vx: lh(v, 300, 520), vy: 1200, gravity: 70, w: 20, h: 24, lifetime: 120, damage: 80, chip: 10, knockdown: true, explodeOnGround: true, kind: "egg" }),
     })),
-    ...pair((v) => move({
-      // hitbox -30..60 covers both sides; two-sided handling in sim/specials.ts (S6).
-      id: `tailSpin.${v}`, kind: "special", name: "Tail Spin", input: { motion: "charge", button: lh(v, "LK", "HK"), dir: null, stance: "stand" },
-      startup: 6, active: 24, recovery: 18, pose: "spin",
-      velocities: [{ frame: 6, vx: lh(v, 600, 850), vy: null }, { frame: 30, vx: 0, vy: null }],
-      invuln: [{ from: 1, to: 29, kind: "projectile" }],
-      hits: [[8, 15], [16, 23], [24, 30]].map(([a, b], i) => hit({
-        frames: [a as number, b as number], box: box(-30, 10, 90, 50), damage: 35, chip: 3, knockdown: i === 2,
-      })),
-    })),
     move({
       // rolls, rebounds once off the wall, hits every 6 frames (max 6): sim/specials.ts (S6). launch applies to the 6th hit.
       id: "stampedeRoll", kind: "super", name: "Stampede Roll", input: { motion: "dqcf", button: "K", dir: null, stance: "stand" },

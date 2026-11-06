@@ -1,6 +1,6 @@
 // Special-move behaviour (S6). Integers only.
 // Data-driven: `projectile`, `heal`, `lockOnHit`, `counter`, `grab`.
-// Per-move-id code is allowed ONLY for: smokeStep, stampedeRoll, overload, shurikenFan.H, tailSpin (docs/tasks.md S6).
+// Per-move-id code is allowed ONLY for: stampedeRoll, overload, shurikenFan.H (docs/tasks.md S6).
 import { CHARS } from "../chars/index.js";
 import type { HitDef, MoveDef } from "../chars/types.js";
 import { clamp } from "../fixed.js";
@@ -13,11 +13,6 @@ import type { Fighter, MatchState } from "./types.js";
 /** Move frame on which `heal` is applied. TODO: MoveDef has no heal-frame field; only dragonDumpling heals (f10). */
 export const HEAL_FRAME = 10;
 
-// smokeStep (Kaze): teleport f10, face the opponent f15.
-const SMOKE_TELEPORT_FRAME = 10;
-const SMOKE_FACE_FRAME = 15;
-const SMOKE_BEHIND = 6000;   // LK: 60 px behind the opponent
-const SMOKE_FRONT = 12000;   // HK: 120 px in front of the opponent
 // overload (Volt): column spawn frames and x offsets (px).
 const OVERLOAD_FRAMES = [10, 18, 26, 34, 42];
 const OVERLOAD_X = [80, 180, 280, 380, 480];
@@ -37,7 +32,7 @@ function endActive(f: Fighter, m: MoveDef): void {
 
 /**
  * Per-frame move behaviour after physics, for fighter i (only when it was not in hitstop this frame).
- * Projectile spawns, heal, overload columns, smokeStep teleport, stampedeRoll rebound/re-hit timer.
+ * Projectile spawns, heal, overload columns, stampedeRoll rebound/re-hit timer.
  */
 export function moveTick(s: MatchState, i: 0 | 1): void {
   const f = s.fighters[i], opp = s.fighters[1 - i]!;
@@ -59,13 +54,6 @@ export function moveTick(s: MatchState, i: 0 | 1): void {
       if (m.id === "shurikenFan.H" && mf === m.projectile.spawnFrame + FAN_SECOND_DELAY) spawnProjectile(s, i, m, FAN_SECOND_OFFSET);
     }
   }
-  if (isId(m, "smokeStep")) {
-    if (mf === SMOKE_TELEPORT_FRAME) {
-      const off = m.id.endsWith(".L") ? -SMOKE_BEHIND : SMOKE_FRONT;
-      f.x = clamp(opp.x + off * opp.facing, WALL_MIN, WALL_MAX);
-    }
-    if (mf === SMOKE_FACE_FRAME && opp.x !== f.x) f.facing = opp.x > f.x ? 1 : -1;
-  }
   if (m.id === "stampedeRoll") {
     // Rebound once: reverse vx at wall contact, facing unchanged. spCount += 256 marks "rebounded"; low byte = contacts.
     const atWall = (f.x <= WALL_MIN && f.vx < 0) || (f.x >= WALL_MAX && f.vx > 0);
@@ -85,10 +73,9 @@ export function strikeReady(a: Fighter, m: MoveDef, k: number): boolean {
   return (a.moveHitMask & (1 << k)) === 0;
 }
 
-/** World hitboxes for hit h (tailSpin hits both sides: box plus its mirror). */
+/** World hitboxes for hit h (single box; no two-sided specials remain). */
 export function strikeBoxes(a: Fighter, m: MoveDef, h: HitDef): WorldBox[] {
   const out = [worldBox(a, h.box)];
-  if (isId(m, "tailSpin")) out.push(worldBox(a, { ...h.box, x: -(h.box.x + h.box.w) }));
   return out;
 }
 

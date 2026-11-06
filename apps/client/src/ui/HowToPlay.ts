@@ -27,8 +27,7 @@ export function moveName(id: CharId, move: string): string { return getMove(id, 
 /** Touch easy-special list for one character (characters.md SP macros), e.g. ["SP", "Rivet Shot (↓↘→ + HP)"]. Pure. */
 export function easySpecials(id: CharId): [string, string][] {
   const t = SP_TABLE[id];
-  const rows: [string, string][] = (['neutral', 'up', 'back', 'down'] as const).map(d => [SP_LABEL[d], moveName(id, t[d].move)]);
-  if (t.down.move !== t.downUncharged.move) rows[3] = [SP_LABEL.down, `${moveName(id, t.down.move)} (after holding ← ~1 s), else ${moveName(id, t.downUncharged.move)}`];
+  const rows: [string, string][] = [[SP_LABEL.neutral, moveName(id, t.neutral.move)], [SP_LABEL.up, moveName(id, t.up.move)]];
   rows.push(['SUPER', `${moveName(id, t.superMove)} (full meter)`]);
   return rows;
 }

@@ -10,25 +10,26 @@ const e = (motion: Motion, button: number, move: string): MacroEntry => ({ motio
 
 /** Per-character SP tables (characters.md §2-§6). `downUncharged` equals `down` for characters without a charge move. */
 export const SP_TABLE: Readonly<Record<CharId, CharMacros>> = {
+  // Two specials per character (owner request 2026-11-06): neutral/down = special 1 (H/L), up/back = special 2 (H/L).
   bolt: {
-    neutral: e('qcf', HP, 'rivetShot.H'), up: e('dp', HP, 'jackhammerRise.H'), back: e('qcb', HK, 'hardHatHop.H'),
-    down: e('qcf', LP, 'rivetShot.L'), downUncharged: e('qcf', LP, 'rivetShot.L'), superButton: HP, superMove: 'demolitionDrive',
+    neutral: e('qcf', HP, 'rivetShot.H'), down: e('qcf', LP, 'rivetShot.L'), up: e('dp', HP, 'jackhammerRise.H'), back: e('dp', LP, 'jackhammerRise.L'),
+    downUncharged: e('qcf', LP, 'rivetShot.L'), superButton: HP, superMove: 'demolitionDrive',
   },
   volt: {
-    neutral: e('qcf', HP, 'staticSpark.H'), up: e('dp', HK, 'liveWireHop.H'), back: e('qcb', HP, 'coilWhip.H'),
-    down: e('qcf', LP, 'staticSpark.L'), downUncharged: e('qcf', LP, 'staticSpark.L'), superButton: HP, superMove: 'overload',
+    neutral: e('qcf', HP, 'staticSpark.H'), down: e('qcf', LP, 'staticSpark.L'), up: e('dp', HK, 'liveWireHop.H'), back: e('dp', LK, 'liveWireHop.L'),
+    downUncharged: e('qcf', LP, 'staticSpark.L'), superButton: HP, superMove: 'overload',
   },
   chompa: {
-    neutral: e('qcb', HP, 'eggLob.H'), up: e('spin', HP, 'gulpGrab.H'), back: e('qcb', LP, 'eggLob.L'),
-    down: e('charge', HK, 'tailSpin.H'), downUncharged: e('spin', LP, 'gulpGrab.L'), superButton: HK, superMove: 'stampedeRoll',
+    neutral: e('qcb', HP, 'eggLob.H'), down: e('qcb', LP, 'eggLob.L'), up: e('spin', HP, 'gulpGrab.H'), back: e('spin', LP, 'gulpGrab.L'),
+    downUncharged: e('qcb', LP, 'eggLob.L'), superButton: HK, superMove: 'stampedeRoll',
   },
   kaze: {
-    neutral: e('qcf', HP, 'shurikenFan.H'), up: e('dp', HK, 'risingCrane.H'), back: e('dd', LK, 'smokeStep.L'),
-    down: e('dd', HK, 'smokeStep.H'), downUncharged: e('dd', HK, 'smokeStep.H'), superButton: HP, superMove: 'thousandShadows',
+    neutral: e('qcf', HP, 'shurikenFan.H'), down: e('qcf', LP, 'shurikenFan.L'), up: e('dp', HK, 'risingCrane.H'), back: e('dp', LK, 'risingCrane.L'),
+    downUncharged: e('qcf', LP, 'shurikenFan.L'), superButton: HP, superMove: 'thousandShadows',
   },
   bao: {
-    neutral: e('qcf', HP, 'jadePalm.H'), up: e('qcb', LK, 'bambooCounter.L'), back: e('qcb', HK, 'bambooCounter.H'),
-    down: e('charge', HP, 'rollingBun.H'), downUncharged: e('qcf', LP, 'jadePalm.L'), superButton: HP, superMove: 'dragonDumpling',
+    neutral: e('qcf', HP, 'jadePalm.H'), down: e('qcf', LP, 'jadePalm.L'), up: e('qcb', HK, 'bambooCounter.H'), back: e('qcb', LK, 'bambooCounter.L'),
+    downUncharged: e('qcf', LP, 'jadePalm.L'), superButton: HP, superMove: 'dragonDumpling',
   },
 };
 

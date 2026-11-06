@@ -34,25 +34,6 @@ describe("S6 Kaze specials", () => {
     expect(s.projectiles[0]?.vx).toBe(700);
     expect(s.projectiles[0]?.vy).toBe(-500);
   });
-  it("smokeStep.L lands 60 px behind the opponent and faces it at f15; HK lands 120 px in front", () => {
-    const s = at(200, "kaze");
-    runFrames(s, dd(LK));
-    expect(p1(s).move).toBe("smokeStep.L");
-    runFrames(s, hold(0, 0, 9));
-    expect(p1(s).x).toBe(p2(s).x + 6000);
-    expect(p1(s).facing).toBe(1);
-    runFrames(s, hold(0, 0, 5));
-    expect(p1(s).facing).toBe(-1);
-    const h = at(300, "kaze");
-    runFrames(h, [...dd(HK), ...hold(0, 0, 9)]);
-    expect(p1(h).x).toBe(p2(h).x - 12000);
-  });
-  it("smokeStep is fully invulnerable f1-16", () => {
-    const s = at(50, "kaze");
-    runFrames(s, dd(LK));
-    runFrames(s, [[0, LP], ...hold(0, 0, 6)]);
-    expect(p1(s).hp).toBe(900);
-  });
   it("risingCrane.H as anti-air: 40 + 90 = 130", () => {
     const s = at(40, "kaze");
     Object.assign(p2(s), { airborne: true, state: "air", y: 4000, vy: 0 });

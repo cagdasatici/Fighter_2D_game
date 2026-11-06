@@ -25,13 +25,6 @@ export const BAO: CharDef = {
       });
     }),
     ...pair((v) => move({
-      id: `rollingBun.${v}`, kind: "special", name: "Rolling Bun", input: { motion: "charge", button: lh(v, "LP", "HP"), dir: null, stance: "stand" },
-      startup: 8, active: 30, recovery: 16, pose: "spin",
-      velocities: [{ frame: 8, vx: lh(v, 900, 1200), vy: null }, { frame: 39, vx: 0, vy: null }],
-      invuln: [{ from: 1, to: 38, kind: "projectile" }],
-      hits: [hit({ frames: [9, 38], box: box(-20, 0, 60, 60), damage: lh(v, 90, 110), chip: lh(v, 9, 11), knockdown: true })],
-    })),
-    ...pair((v) => move({
       // LK = high counter (doesn't parry lows), HK = low counter (doesn't parry overheads).
       id: `bambooCounter.${v}`, kind: "special", name: "Bamboo Counter", input: { motion: "qcb", button: lh(v, "LK", "HK"), dir: null, stance: "stand" },
       startup: 3, active: 18, recovery: 22, pose: "counterStance",

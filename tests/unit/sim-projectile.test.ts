@@ -75,14 +75,6 @@ describe("S6 projectiles", () => {
     expect(p2(s).hitstop).toBe(8);
     expect(p1(s).hitstop).toBe(0);
   });
-  it("projectile invulnerability (Chompa tailSpin) lets a rivet pass through", () => {
-    const s = at(150, "bolt", "chompa");
-    begin(s, 1, "tailSpin.L");
-    s.projectiles.push({ owner: 0, kind: "rivet", x: p2(s).x - 1000, y: 70 * PX, vx: 650, vy: 0, gravity: 0, w: 20, h: 10, hits: 1, hitInterval: 0, cooldown: 0, life: 50, def: "bolt:rivetShot.H", exploding: 0 });
-    runFrames(s, hold(0, 0, 3));
-    expect(p2(s).hp).toBe(1100);
-    expect(p2(s).state).toBe("attack");
-  });
   it("projectiles are removed when lifetime ends or 100 px off stage", () => {
     const s = at(200);
     s.projectiles.push({ owner: 0, kind: "rivet", x: 60000 + 9900, y: 70 * PX, vx: 200, vy: 0, gravity: 0, w: 20, h: 10, hits: 1, hitInterval: 0, cooldown: 0, life: 50, def: "bolt:rivetShot.H", exploding: 0 });

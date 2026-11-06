@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { BASE_IDS, CHARS, getMove, type CharId, type MoveDef } from "../../packages/shared/src/index.js";
 
 const ROSTER: Record<CharId, { command: string; specials: string[]; super: string }> = {
-  bolt: { command: "6HP", specials: ["rivetShot", "jackhammerRise", "hardHatHop"], super: "demolitionDrive" },
-  volt: { command: "3LK", specials: ["staticSpark", "coilWhip", "liveWireHop"], super: "overload" },
-  chompa: { command: "6HK", specials: ["gulpGrab", "eggLob", "tailSpin"], super: "stampedeRoll" },
-  kaze: { command: "6LK", specials: ["shurikenFan", "smokeStep", "risingCrane"], super: "thousandShadows" },
-  bao: { command: "3HP", specials: ["jadePalm", "rollingBun", "bambooCounter"], super: "dragonDumpling" },
+  bolt: { command: "6HP", specials: ["rivetShot", "jackhammerRise"], super: "demolitionDrive" },
+  volt: { command: "3LK", specials: ["staticSpark", "liveWireHop"], super: "overload" },
+  chompa: { command: "6HK", specials: ["gulpGrab", "eggLob"], super: "stampedeRoll" },
+  kaze: { command: "6LK", specials: ["shurikenFan", "risingCrane"], super: "thousandShadows" },
+  bao: { command: "3HP", specials: ["jadePalm", "bambooCounter"], super: "dragonDumpling" },
 };
 const ids = Object.keys(CHARS) as CharId[];
 const mv = (c: CharId, id: string): MoveDef => { const m = getMove(c, id); if (!m) throw new Error(`${c} ${id} missing`); return m; };

@@ -40,28 +40,6 @@ describe("S6 Chompa specials", () => {
     expect(p2(s).hp).toBe(920);
     expect(p2(s).state).toBe("juggle");
   });
-  it("tailSpin needs charge: no charge → no tailSpin; 41 back frames → tailSpin.L", () => {
-    const no = at(300, "chompa");
-    runFrames(no, [[LEFT, 0], [LEFT, 0], [RIGHT | LK, 0]]);
-    expect(p1(no).move ?? "").not.toContain("tailSpin");
-    const yes = at(300, "chompa");
-    runFrames(yes, charge(LK));
-    expect(p1(yes).move).toBe("tailSpin.L");
-  });
-  it("tailSpin hits 3 × 35 (scaled 35/35/28) with knockdown on the last hit", () => {
-    const s = at(80, "chompa");
-    begin(s, 0, "tailSpin.L");
-    runFrames(s, hold(0, 0, 70));
-    expect(1000 - p2(s).hp).toBe(35 + 35 + 28);
-  });
-  it("tailSpin hits an opponent behind it (two-sided box)", () => {
-    const s = at(80, "chompa");
-    p2(s).x = p1(s).x - 4000; // 40 px behind Chompa (facing right)
-    begin(s, 0, "tailSpin.L");
-    p1(s).vx = 0;
-    runFrames(s, hold(0, 0, 8));
-    expect(p2(s).hp).toBeLessThan(1000);
-  });
   it("stampedeRoll: 6 contacts × 55 max, last launches; rebounds once off the wall", () => {
     const s = at(100, "chompa");
     begin(s, 0, "stampedeRoll");

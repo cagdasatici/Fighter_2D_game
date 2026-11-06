@@ -286,3 +286,11 @@ RESOLVED by decision 0006
 **Known limit:** sim still detects motions internally (macros and CPU use them). Cutting the sim to 2 specials per character was not done (would need rebalance via TUNE). Not run on iPad or gamepad: NOT RUN.
 **Status:** DONE. **Tests:** `docs/test-results/HELP2.md`
 **Commit:** `HELP2: show SP/SUPER controls instead of motions, label fixes`
+
+## CUT2 — Two specials per character (owner request 2026-11-06)
+**Prerequisites:** HELP2 DONE. **Files:** `packages/shared/src/chars/{bolt,volt,chompa,kaze,bao}.ts`, `sim/specials.ts` (dead smokeStep/tailSpin code), `apps/client/src/input/Macro.ts`, `ui/HowToPlay.ts`, tests.
+**Steps:** drop `hardHatHop`, `coilWhip`, `tailSpin`, `smokeStep`, `rollingBun`. SP table: neutral/down = special 1 (H/L), up/back = special 2 (H/L). Move List and How to Play show `SP` and `↑ + SP`. Tests for removed moves deleted.
+**Known limits:** `invuln kind "projectile"` and charge motion remain in the engine but no move uses them now (the Chompa invulnerability-vs-projectile test was deleted). Touch P2 intentionally not implemented (owner: no two-player-touch use case). Not run on iPad or gamepad: NOT RUN.
+**Status:** DONE. **Tests:** `docs/test-results/CUT2.md`
+**Commit:** `CUT2: two specials per character`
+

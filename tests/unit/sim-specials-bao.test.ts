@@ -52,11 +52,6 @@ describe("S6 Bao specials", () => {
     while (p2(b).state !== "blockstun" && n++ < 20) runFrames(b, [[0, RIGHT]]);
     expect(advantage(b, RIGHT)).toBe(-11);
   });
-  it("rollingBun needs charge and hits for 110 (H) with knockdown", () => {
-    const s = at(250, "bao");
-    runFrames(s, [...hold(LEFT, 0, 41), [RIGHT | HP, 0], ...hold(0, 0, 45)]);
-    expect(p2(s).hp).toBe(890);
-  });
   it("dragonDumpling heals 80 on f10 (capped at max) and fires jadeDragon on f30", () => {
     const s = at(500, "bao");
     p1(s).hp = 1000;

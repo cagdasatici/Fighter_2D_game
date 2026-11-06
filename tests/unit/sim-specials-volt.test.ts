@@ -11,18 +11,6 @@ const p2 = (s: MatchState) => s.fighters[1];
 void [DOWN, HK, HP, LEFT, LK, LP, RIGHT, PX, advantage, begin, dd, dp, qcb, qcf];
 
 describe("S6 Volt specials", () => {
-  it("coilWhip.L: 80 dmg, reach 150 px (hits at 171 px gap, whiffs at 172)", () => {
-    const hitAt = (gap: number) => { const s = at(gap, "volt"); runFrames(s, [...qcb(LP), ...hold(0, 0, 20)]); return 1000 - p2(s).hp; };
-    expect(hitAt(171)).toBe(80);
-    expect(hitAt(172)).toBe(0);
-  });
-  it("coilWhip.L on block = blockstun 15 − (3 + 22) = −10", () => {
-    const s = at(120, "volt");
-    runFrames(s, qcb(LP));
-    let n = 0;
-    while (p2(s).state !== "blockstun" && n++ < 20) runFrames(s, [[0, RIGHT]]);
-    expect(advantage(s, RIGHT)).toBe(-10);
-  });
   it("staticSpark hits 2 × 60", () => {
     const s = at(200, "volt");
     runFrames(s, [...qcf(LP), ...hold(0, 0, 100)]); // +11: the spark freezes during its hitstop (decision 0003)

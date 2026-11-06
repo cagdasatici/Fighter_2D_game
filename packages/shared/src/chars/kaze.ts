@@ -37,11 +37,6 @@ export const KAZE: CharDef = {
       projectile: proj({ spawnFrame: 10, offset: { x: 40, y: 80 }, vx: 700, vy: -500, w: 16, h: 16, lifetime: 90, damage: 40, chip: 6, hitstun: 12, blockstun: 10, meterOnHit: 15, kind: "shuriken" }),
     })),
     ...pair((v) => move({
-      // teleport at f10 (LK behind / HK in front), facing update f15: sim/specials.ts (S6).
-      id: `smokeStep.${v}`, kind: "special", name: "Smoke Step", input: { motion: "dd", button: lh(v, "LK", "HK"), dir: null, stance: "stand" },
-      startup: 4, active: 0, recovery: 14, pose: "smoke", invuln: [{ from: 1, to: 16, kind: "full" }],
-    })),
-    ...pair((v) => move({
       id: `risingCrane.${v}`, kind: "special", name: "Rising Crane", input: { motion: "dp", button: lh(v, "LK", "HK"), dir: null, stance: "stand" },
       startup: 4, active: 10, recovery: 22, landingRecovery: 10, pose: "crane",
       invuln: [{ from: 1, to: lh(v, 5, 7), kind: "full" }], velocities: [{ frame: 4, vx: 250, vy: 1600 }], airborneFrames: [4, 36],
