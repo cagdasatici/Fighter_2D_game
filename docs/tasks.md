@@ -294,3 +294,7 @@ RESOLVED by decision 0006
 **Status:** DONE. **Tests:** `docs/test-results/CUT2.md`
 **Commit:** `CUT2: two specials per character` (hash f78a266)
 
+## ZOOM — Stop iPhone zoom while playing (owner request 2026-11-06)
+**Files:** `apps/client/index.html`, `apps/client/src/main.ts`, `apps/client/src/ui/experience.css`. Viewport no user scaling; gesture/multi-touch/contextmenu blocked with cleanup; CSS touch-action and no callout/selection. **Tests:** `docs/test-results/ZOOM.md`. Physical iPhone check: NOT RUN (needs the owner).
+**Commit:** `ZOOM: block pinch, double-tap zoom and long-press menu on iOS`
+
