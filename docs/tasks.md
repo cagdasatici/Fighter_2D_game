@@ -35,7 +35,7 @@ Reference project: `../battlegrounds_game` (read-only; copy files, never edit it
 | PLAT | One-way platforms in sim + stages | CTRL | DONE | fdff6a7 | docs/test-results/PLAT.md |
 | FX | High-quality game-feel effects | PLAT | DONE | ce25d7c | docs/test-results/FX.md |
 | TUNE | Balance + CPU for specials/platforms | FX | DONE | f1bfbc9 | docs/test-results/TUNE.md |
-| PERF1 | Cut volcano stage frame spikes (render only) | TUNE | DONE (target p95 gap NOT closed, see PERF1.md) | HASH | docs/test-results/PERF1.md |
+| PERF1 | Cut volcano stage frame spikes (render only) | TUNE | DONE (target p95 gap NOT closed, see PERF1.md) | ac0f5c8 | docs/test-results/PERF1.md |
 
 S12 can run in parallel with S8–S11 (different files).
 
