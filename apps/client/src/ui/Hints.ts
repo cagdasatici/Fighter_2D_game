@@ -4,8 +4,8 @@ import { METER_MAX, THROW_RANGE, type MatchState } from '@kb/shared';
 export type HintKind = 'special' | 'super' | 'throw';
 export const HINT_FRAMES = 120; // ~2 s at 60 Hz
 export const HINT_FADE = 20;
-export function hintText(kind: HintKind, suKey: string): string {
-  return kind === 'super' ? `SUPER ready: press ${suKey}` : kind === 'throw' ? 'Close! LP+LK = throw' : 'SP + direction = special';
+export function hintText(kind: HintKind, suLabel: string): string {
+  return kind === 'super' ? `SUPER ready: press ${suLabel}` : kind === 'throw' ? 'Close! LP+LK = throw' : 'SP + direction = special';
 }
 
 /** Which hints newly trigger this frame for fighter `side`, given what was already shown. */

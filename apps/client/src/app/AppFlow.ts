@@ -26,7 +26,7 @@ import { AdvantageMeter, advantageText, applyTrainingRefills, dummyInput, type T
 import { showCharSelect } from '../ui/CharSelect.js';
 import { showHowToPlay } from '../ui/HowToPlay.js';
 import { showPause } from '../ui/Pause.js';
-import { showMoveList } from '../ui/MoveList.js';
+import { controlLabels, showMoveList, superLabel } from '../ui/MoveList.js';
 import { HintTracker, hintText } from '../ui/Hints.js';
 import { keyLabel } from '../ui/text.js';
 import { drawResults, showResults, type ResultsPanel } from '../ui/Results.js';
@@ -381,7 +381,7 @@ export class AppFlow {
     for (const side of sides) {
       const h = this.hints[side].current;
       if (!h) continue;
-      const text = hintText(h.kind, keyLabel(this.settings.keys[this.net?.rb ? 0 : side].SU));
+      const text = hintText(h.kind, superLabel(controlLabels(this.settings.keys[this.net?.rb ? 0 : side], this.net?.rb ? 0 : side)));
       ctx.globalAlpha = h.alpha; ctx.fillStyle = '#ffe27a';
       ctx.textAlign = side === 0 ? 'left' : 'right';
       const x = side === 0 ? 16 : WIDTH - 16;

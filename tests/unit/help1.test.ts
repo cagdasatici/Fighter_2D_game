@@ -9,25 +9,28 @@ import { DEFAULT_KEYS, defaultSettings, parseSettings } from "../../apps/client/
 const IDS = Object.keys(CHARS) as CharId[];
 
 describe("move list rows", () => {
-  it.each(IDS)("%s: 4 specials with motion notation, throw and super", (id) => {
+  it.each(IDS)("%s: 4 specials by name with SP, throw and super (no motions)", (id) => {
     const rows = moveListRows(id, controlLabels(DEFAULT_KEYS[0], 0));
     expect(rows).toHaveLength(6);
-    for (const [name] of rows.slice(0, 4)) expect(name).toMatch(/\(.*\+ (LP|HP|LK|HK)/); // "Name (motion + button)"
+    for (const [name, how] of rows.slice(0, 4)) { expect(name).not.toMatch(/[↓↘]|\+ (LP|HP|LK|HK)/); expect(how).toMatch(/SP \[/); }
     expect(rows[4]![0]).toBe("Throw");
     expect(rows[4]![1]).toContain("U + J"); // bound LP + LK
-    expect(rows[5]![0]).toMatch(/^Super: .*\(.*\+ /);
+    expect(rows[5]![0]).toMatch(/^Super: [^(]+$/);
     expect(rows[5]![1]).toContain("O"); // bound SU key
   });
-  it("shows rebound keys; pad/touch labels are P1 only", () => {
+  it("shows rebound keys; pad labels for both players, touch for P1 only", () => {
     const k = { ...DEFAULT_KEYS[1], SU: "KeyZ" };
     const p2 = moveListRows("bolt", controlLabels(k, 1));
     expect(p2[5]![1]).toContain("Z");
-    expect(p2[5]![1]).not.toMatch(/pad|touch/);
+    expect(p2[5]![1]).toMatch(/pad RT/);
+    expect(p2[5]![1]).not.toMatch(/touch/);
+    expect(p2[0]![1]).toMatch(/pad RB/);
     expect(moveListRows("bolt", controlLabels(DEFAULT_KEYS[0], 0))[5]![1]).toMatch(/pad RT.*touch SUPER/);
   });
-  it("Bolt neutral special reads as a quarter-circle with HP; Moves tab rows carry notation", () => {
-    expect(easySpecials("bolt")[0]![1]).toBe("Rivet Shot (↓↘→ + HP)");
-    for (const id of IDS) for (const [, t] of easySpecials(id)) expect(t).toMatch(/\+ (LP|HP|LK|HK|P|K)\)/);
+  it("Moves tab rows are plain SP + direction with move names, no motion notation", () => {
+    expect(easySpecials("bolt")[0]).toEqual(["SP", "Rivet Shot"]);
+    expect(easySpecials("bolt")[3]![0]).toBe("↓ + SP");
+    for (const id of IDS) for (const [, t] of easySpecials(id)) expect(t).not.toMatch(/\+ (LP|HP|LK|HK|P|K)\)/);
   });
 });
 
@@ -75,7 +78,7 @@ describe("hint triggers", () => {
     for (let i = 0; i < HINT_FRAMES / 2 - 3; i++) t.update(s, 0);
     expect(t.current!.alpha).toBeLessThan(a0 + 1);
     expect(t.current!.alpha).toBeLessThan(0.3);
-    expect(hintText("super", "O")).toBe("SUPER ready: press O");
+    expect(hintText("super", "O / pad RT / touch SUPER")).toBe("SUPER ready: press O / pad RT / touch SUPER");
     expect(hintText("throw", "")).toBe("Close! LP+LK = throw");
   });
 });

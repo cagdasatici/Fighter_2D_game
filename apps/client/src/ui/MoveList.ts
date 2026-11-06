@@ -1,24 +1,27 @@
 import { CHARS, type CharId } from '@kb/shared';
 import { SP_TABLE } from '../input/Macro.js';
 import { button, el, focusFirst, menuNav, screen } from './dom.js';
-import { easySpecials, moveText } from './HowToPlay.js';
+import { easySpecials, moveName } from './HowToPlay.js';
 import type { KeyMap } from './Settings.js';
 import { keyLabel } from './text.js';
 
-/** Bound control labels for one player. Gamepad and touch exist only for P1. */
+/** Bound control labels for one player. Pad 1 drives P1 and pad 2 drives P2; touch exists only for P1. */
 export interface ControlLabels { sp: string; su: string; lp: string; lk: string; pad: boolean; touch: boolean }
 export function controlLabels(keys: KeyMap, p: 0 | 1): ControlLabels {
-  return { sp: keyLabel(keys.SP), su: keyLabel(keys.SU), lp: keyLabel(keys.LP), lk: keyLabel(keys.LK), pad: p === 0, touch: p === 0 };
+  return { sp: keyLabel(keys.SP), su: keyLabel(keys.SU), lp: keyLabel(keys.LP), lk: keyLabel(keys.LK), pad: true, touch: p === 0 };
 }
-const via = (key: string, pad: string | null, touch: string | null): string =>
+export const via = (key: string, pad: string | null, touch: string | null): string =>
   [key, pad ? `pad ${pad}` : '', touch ? `touch ${touch}` : ''].filter(Boolean).join(' / ');
+
+/** "key / pad RT / touch SUPER" label for the super button of one player. */
+export const superLabel = (c: ControlLabels): string => via(c.su, c.pad ? 'RT' : null, c.touch ? 'SUPER' : null);
 
 /** Move List rows [left, right] for one character: specials with their SP shortcut, throw, super. Pure (unit-tested). */
 export function moveListRows(id: CharId, c: ControlLabels): [string, string][] {
-  const sp = via(c.sp, c.pad ? 'RB' : null, c.touch ? 'SP' : null), su = via(c.su, c.pad ? 'RT' : null, c.touch ? 'SUPER' : null);
+  const sp = via(c.sp, c.pad ? 'RB' : null, c.touch ? 'SP' : null), su = superLabel(c);
   const rows: [string, string][] = easySpecials(id).slice(0, -1).map(([shortcut, text]) => [text, shortcut.replace('SP', `SP [${sp}]`)]);
   rows.push(['Throw', `LP + LK (${c.lp} + ${c.lk}) up close. If grabbed, press LP + LK to tech it.`]);
-  rows.push([`Super: ${moveText(id, SP_TABLE[id].superMove)}`, `Full meter: enter the motion, or press SU (${su}).`]);
+  rows.push([`Super: ${moveName(id, SP_TABLE[id].superMove)}`, `Full meter: press SUPER [${su}]`]);
   return rows;
 }
 

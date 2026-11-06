@@ -279,3 +279,10 @@ RESOLVED by decision 0006
 **Prerequisites:** TUNE2 DONE. **Files:** client UI only: `apps/client/src/ui/{HowToPlay,Pause,Settings,MoveList,Hints}.ts`, `apps/client/src/app/AppFlow.ts`, `tests/unit/help1.test.ts`, `tests/browser/help1-shots.spec.ts`. No sim or ai changes.
 **Steps:** (1) Pause > Move List: per paused human player, each special with motion notation + SP shortcut, throw (LP+LK, tech), super (motion or SU), with bound key/pad/touch labels. (2) Once-per-match hints per local player (super ready, first time in `THROW_RANGE`, round 1 start), about 2 s with fade, Settings > Hints toggle (default on, persisted). Drawn in render from a pure tracker fed per sim frame. (3) How to Play > Moves/Touch lists show notation. Owner request overrides the dev-only note on `notation()` (decision 0014).
 **Commit:** `HELP1: add pause move list, in-match hints and motion notation`
+
+## HELP2 — Simpler controls and label fixes (owner request 2026-11-06)
+**Prerequisites:** HELP1 DONE. **Files:** client UI only: `apps/client/src/ui/{HowToPlay,MoveList,Hints}.ts`, `apps/client/src/app/AppFlow.ts`, `tests/unit/help1.test.ts`. No sim, ai or character-data changes.
+**Steps:** (1) Super hint names key / pad RT / touch SUPER. (2) Super row no longer shows "+ P"; no motion notation anywhere in Move List, How to Play or Char Select: specials read `SP`, `↑ + SP`, `← + SP`, `↓ + SP`, super reads `SUPER`. (3) Pad label shown for P2 too (pad 2); touch stays P1 only (Touch.ts has no P2 input).
+**Known limit:** sim still detects motions internally (macros and CPU use them). Cutting the sim to 2 specials per character was not done (would need rebalance via TUNE). Not run on iPad or gamepad: NOT RUN.
+**Status:** DONE. **Tests:** `docs/test-results/HELP2.md`
+**Commit:** `HELP2: show SP/SUPER controls instead of motions, label fixes`

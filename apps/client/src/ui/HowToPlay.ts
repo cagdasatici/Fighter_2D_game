@@ -16,18 +16,20 @@ export function notation(m: MoveDef, generic = false): string {
   return `${pre ? `${pre} + ` : ''}${btn}${air}`;
 }
 
-const SP_LABEL: Readonly<Record<SpDir, string>> = { neutral: 'SP / →SP', up: '↑SP', back: '←SP', down: '↓SP' };
+const SP_LABEL: Readonly<Record<SpDir, string>> = { neutral: 'SP', up: '↑ + SP', back: '← + SP', down: '↓ + SP' };
 /** Move display name + motion notation, e.g. "Rivet Shot (↓↘→ + HP)". Pure. */
 export function moveText(id: CharId, move: string): string {
   const m = getMove(id, move);
   return m ? `${m.name} (${notation(m)})` : move;
 }
+/** Plain display name of a move (no motion notation: players use SP + direction). */
+export function moveName(id: CharId, move: string): string { return getMove(id, move)?.name ?? move; }
 /** Touch easy-special list for one character (characters.md SP macros), e.g. ["SP", "Rivet Shot (↓↘→ + HP)"]. Pure. */
 export function easySpecials(id: CharId): [string, string][] {
   const t = SP_TABLE[id];
-  const rows: [string, string][] = (['neutral', 'up', 'back', 'down'] as const).map(d => [SP_LABEL[d], moveText(id, t[d].move)]);
-  if (t.down.move !== t.downUncharged.move) rows[3] = [SP_LABEL.down, `${moveText(id, t.down.move)} (after holding ← ~1 s), else ${moveText(id, t.downUncharged.move)}`];
-  rows.push(['SUPER', `${moveText(id, t.superMove)} (full meter)`]);
+  const rows: [string, string][] = (['neutral', 'up', 'back', 'down'] as const).map(d => [SP_LABEL[d], moveName(id, t[d].move)]);
+  if (t.down.move !== t.downUncharged.move) rows[3] = [SP_LABEL.down, `${moveName(id, t.down.move)} (after holding ← ~1 s), else ${moveName(id, t.downUncharged.move)}`];
+  rows.push(['SUPER', `${moveName(id, t.superMove)} (full meter)`]);
   return rows;
 }
 
@@ -45,7 +47,7 @@ export function showHowToPlay(root: HTMLElement, keys: [KeyMap, KeyMap], back: (
       ['Throw', 'Light Punch + Light Kick up close.'],
       ['Dash', 'Tap forward twice (or back twice to dodge back).'],
       ['Super', 'Fill all 4 meter segments, then press SUPER.'],
-      ['Specials', 'Press SP. Hold ↑, ← or ↓ with SP for a different special. Pause → Move List shows every motion.'],
+      ['Specials', 'Press SP. Hold ↑, ← or ↓ with SP for a different special. Pause → Move List lists them all. No motions needed.'],
     ])],
     Keyboard: () => [list([
       ['Move', `P1 ${k(p1.up)} ${k(p1.left)} ${k(p1.down)} ${k(p1.right)} · P2 ${k(p2.up)} ${k(p2.left)} ${k(p2.down)} ${k(p2.right)}`],
